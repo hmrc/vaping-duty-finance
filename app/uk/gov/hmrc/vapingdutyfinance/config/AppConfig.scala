@@ -23,3 +23,5 @@ import play.api.Configuration
 class AppConfig @Inject()(config: Configuration):
 
   val appName: String = config.get[String]("appName")
+  val enrolmentServiceName: String = config.get[String]("enrolment.serviceName")
+  val enrolmentIdentifierKey: String = config.get[String]("enrolment.identifierKey")
