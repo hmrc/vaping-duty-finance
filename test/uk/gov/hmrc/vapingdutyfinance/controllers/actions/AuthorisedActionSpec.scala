@@ -34,7 +34,6 @@ import uk.gov.hmrc.auth.core.AuthProvider.GovernmentGateway
 import uk.gov.hmrc.auth.core.CredentialStrength.strong
 import uk.gov.hmrc.auth.core.retrieve.v2.Retrievals.{authorisedEnrolments, internalId as retriveInternalId}
 import uk.gov.hmrc.auth.core.retrieve.~
-import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
 
 import scala.concurrent.ExecutionContext.Implicits.global

@@ -16,8 +16,6 @@
 
 package uk.gov.hmrc.vapingdutyfinance.controllers
 
-import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.*
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar.mock
@@ -29,7 +27,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mdc.MdcExecutionContext
 import uk.gov.hmrc.vapingdutyfinance.controllers.actions.FakeAuthorisedAction
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 class PingControllerSpec extends AnyWordSpec
   with Matchers {

@@ -21,13 +21,13 @@ import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.vapingdutyfinance.controllers.actions.AuthorisedAction
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 @Singleton()
 class PingController @Inject()(
                                 authorised: AuthorisedAction,
                                 cc: ControllerComponents
-                              )(implicit ec: ExecutionContext) extends BackendController(cc) {
+                              )() extends BackendController(cc) {
 
   def ping(): Action[AnyContent] = authorised.async { implicit request =>
 
