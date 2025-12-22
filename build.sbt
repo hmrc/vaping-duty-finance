@@ -12,6 +12,7 @@ lazy val microservice = Project("vaping-duty-finance", file("."))
     // https://www.scala-lang.org/2021/01/12/configuring-and-suppressing-warnings.html
     // suppress warnings in generated routes files
     scalacOptions += "-Wconf:src=routes/.*:s",
+    PlayKeys.playDefaultPort := 8143
   )
   .settings(CodeCoverageSettings.settings: _*)
 
@@ -20,3 +21,7 @@ lazy val it = project
   .dependsOn(microservice % "test->test")
   .settings(DefaultBuildSettings.itSettings())
   .settings(libraryDependencies ++= AppDependencies.it)
+
+addCommandAlias("runAllChecks", ";clean;compile;coverage;test;it/test;scalastyle;coverageReport")
+
+addCommandAlias("runLocalChecks", ";clean;compile;coverage;test;scalastyle;coverageReport")

@@ -14,15 +14,23 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.vapingdutyfinance.config
+package uk.gov.hmrc.vapingdutyfinance.controllers
+
+import play.api.mvc.{Action, AnyContent, ControllerComponents}
+import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
+import uk.gov.hmrc.vapingdutyfinance.controllers.actions.AuthorisedAction
 
 import javax.inject.{Inject, Singleton}
-import play.api.Configuration
+import scala.concurrent.Future
 
-@Singleton
-class AppConfig @Inject()(config: Configuration) {
+@Singleton()
+class PingController @Inject()(
+                                authorised: AuthorisedAction,
+                                cc: ControllerComponents
+                              )() extends BackendController(cc) {
 
-  val appName: String = config.get[String]("appName")
-  val enrolmentServiceName: String = config.get[String]("enrolment.serviceName")
-  val enrolmentIdentifierKey: String = config.get[String]("enrolment.identifierKey")
+  def ping(): Action[AnyContent] = authorised.async { implicit request =>
+
+    Future.successful(Ok("ping"))
+  }
 }
