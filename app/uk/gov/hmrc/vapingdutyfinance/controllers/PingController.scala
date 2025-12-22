@@ -30,7 +30,7 @@ class PingController @Inject()(
                               )(implicit ec: ExecutionContext) extends BackendController(cc) {
 
   def ping(): Action[AnyContent] = authorised.async { implicit request =>
-    
+
     Future.successful(Ok("ping"))
   }
 }
