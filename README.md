@@ -3,6 +3,8 @@ This is a backend microservice for the Vaping Duty service.
 
 Frontend: https://github.com/hmrc/vaping-duty-frontend
 
+Returns: https://github.com/hmrc/vaping-duty
+
 Stub: https://github.com/hmrc/vaping-duty-stubs
 
 ## Requirements
