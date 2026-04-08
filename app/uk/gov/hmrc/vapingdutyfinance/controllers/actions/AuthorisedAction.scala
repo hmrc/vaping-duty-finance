@@ -51,6 +51,7 @@ class BaseAuthorisedAction @Inject() (
     with AuthorisedFunctions
     with Logging {
 
+  @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
   override def invokeBlock[A](request: Request[A], block: IdentifierRequest[A] => Future[Result]): Future[Result] = {
     implicit val headerCarrier: HeaderCarrier = hc(request)
 
