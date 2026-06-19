@@ -42,6 +42,13 @@ class FinancialDataService @Inject()(
     dateFrom: Option[LocalDate],
     dateTo: Option[LocalDate]
   )(using HeaderCarrier): Future[Either[String, Seq[OutstandingPayment]]] = {
+    
+    // Return static data if flag is enabled
+    if (appConfig.useStaticFinancialData) {
+      logger.info(s"Using static financial data for vpdId=$vpdId")
+      return Future.successful(Right(getStaticOutstandingPayments()))
+    }
+    
     val effectiveDateFrom = dateFrom.getOrElse(
       LocalDate.now(clock).minusMonths(appConfig.defaultDateRangeMonths.toLong)
     )
@@ -146,4 +153,31 @@ class FinancialDataService @Inject()(
     case "135" => "Duplicate submission reference"
     case _ => "An error occurred while retrieving financial data"
   }
+
+  private def getStaticOutstandingPayments(): Seq[OutstandingPayment] = Seq(
+    OutstandingPayment(
+      chargeReference = "XM002610011594",
+      period = "2024-01-01 to 2024-01-31",
+      amountDue = BigDecimal("1250.50"),
+      dueDate = "2024-02-15",
+      description = "Vaping Products Duty Return",
+      status = appConfig.statusOverdue
+    ),
+    OutstandingPayment(
+      chargeReference = "XM002610011595",
+      period = "2024-02-01 to 2024-02-29",
+      amountDue = BigDecimal("2500.00"),
+      dueDate = LocalDate.now(clock).plusDays(5).format(dateFormatter),
+      description = "Vaping Products Duty Return",
+      status = appConfig.statusOutstanding
+    ),
+    OutstandingPayment(
+      chargeReference = "XM002610011596",
+      period = "2024-03-01 to 2024-03-31",
+      amountDue = BigDecimal("750.25"),
+      dueDate = LocalDate.now(clock).plusDays(15).format(dateFormatter),
+      description = "Vaping Products Duty Return",
+      status = appConfig.statusOutstanding
+    )
+  )
 }

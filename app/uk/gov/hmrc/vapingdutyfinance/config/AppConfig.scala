@@ -31,6 +31,7 @@ class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig)
   private val financialDataServiceName = "financial-data"
   val financialDataBaseUrl: String = servicesConfig.baseUrl(financialDataServiceName)
   val financialDataEndpoint = "/RESTAdapter/cross-regime/taxpayer/financial-data/query"
+  val useStaticFinancialData: Boolean = config.get[Boolean]("microservice.services.financial-data.use-static-data")
   
   def financialDataUrl: String = s"$financialDataBaseUrl$financialDataEndpoint"
 
