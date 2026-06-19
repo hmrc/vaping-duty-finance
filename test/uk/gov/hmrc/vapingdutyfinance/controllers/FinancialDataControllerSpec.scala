@@ -50,7 +50,7 @@ class FinancialDataControllerSpec extends SpecBase {
   "FinancialDataController" - {
     "getOutstandingPayments must" - {
       "return 200 OK with outstanding payments when service returns success" in {
-        when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(any()))
+        when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(using any()))
           .thenReturn(Future.successful(Right(Seq(testOutstandingPayment))))
 
         val request = FakeRequest(GET, routes.FinancialDataController.getOutstandingPayments(None, None).url)
@@ -61,7 +61,7 @@ class FinancialDataControllerSpec extends SpecBase {
       }
 
       "return 200 OK with empty list when no outstanding payments exist" in {
-        when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(any()))
+        when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(using any()))
           .thenReturn(Future.successful(Right(Seq.empty)))
 
         val request = FakeRequest(GET, routes.FinancialDataController.getOutstandingPayments(None, None).url)
@@ -72,7 +72,7 @@ class FinancialDataControllerSpec extends SpecBase {
       }
 
       "return 200 OK when valid date parameters are provided" in {
-        when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(any()))
+        when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(using any()))
           .thenReturn(Future.successful(Right(Seq(testOutstandingPayment))))
 
         val request = FakeRequest(
@@ -89,7 +89,7 @@ class FinancialDataControllerSpec extends SpecBase {
       }
 
       "return 500 Internal Server Error when service returns error" in {
-        when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(any()))
+        when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(using any()))
           .thenReturn(Future.successful(Left("No data found")))
 
         val request = FakeRequest(GET, routes.FinancialDataController.getOutstandingPayments(None, None).url)
@@ -100,7 +100,7 @@ class FinancialDataControllerSpec extends SpecBase {
       }
 
       "return 500 Internal Server Error when service fails" in {
-        when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(any()))
+        when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(using any()))
           .thenReturn(Future.failed(new RuntimeException("Service error")))
 
         val request = FakeRequest(GET, routes.FinancialDataController.getOutstandingPayments(None, None).url)
@@ -110,7 +110,7 @@ class FinancialDataControllerSpec extends SpecBase {
       }
 
       "handle invalid date format gracefully" in {
-        when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(any()))
+        when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(using any()))
           .thenReturn(Future.successful(Right(Seq(testOutstandingPayment))))
 
         val request = FakeRequest(

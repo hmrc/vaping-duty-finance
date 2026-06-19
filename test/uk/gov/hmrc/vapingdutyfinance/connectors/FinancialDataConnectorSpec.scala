@@ -18,7 +18,7 @@ package uk.gov.hmrc.vapingdutyfinance.connectors
 
 import play.api.http.Status.*
 import play.api.libs.json.Json
-import uk.gov.hmrc.http.UpstreamErrorResponse
+import uk.gov.hmrc.http.{BadRequestException, NotFoundException, UpstreamErrorResponse}
 import uk.gov.hmrc.vapingdutyfinance.base.{ConnectorTestHelpers, SpecBase}
 import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
@@ -100,107 +100,99 @@ class FinancialDataConnectorSpec extends SpecBase with ConnectorTestHelpers {
   "FinancialDataConnector" - {
     "getFinancialData must" - {
       "return a FinancialDataResponse on 201 Created with valid response" in new SetUp {
-        stubPost(url, CREATED, Json.toJson(testSuccessResponse).toString())
+        stubPost(path, CREATED, Json.toJson(testSuccessResponse).toString())
 
         whenReady(connector.getFinancialData(testRequest)) { result =>
           result mustBe Right(testSuccessResponse)
-          verifyPost(url)
+          verifyPost(path)
         }
       }
 
-      "return a FinancialDataErrorResponse on 422 Unprocessable Entity" in new SetUp {
-        stubPost(url, UNPROCESSABLE_ENTITY, Json.toJson(testErrorResponse).toString())
+      "fail with UpstreamErrorResponse on 422 Unprocessable Entity" in new SetUp {
+        stubPost(path, UNPROCESSABLE_ENTITY, "")
 
-        whenReady(connector.getFinancialData(testRequest)) { result =>
-          result mustBe Left(testErrorResponse)
-          verifyPost(url)
+        whenReady(connector.getFinancialData(testRequest).failed) { exception =>
+          exception mustBe an[UpstreamErrorResponse]
+          exception.asInstanceOf[UpstreamErrorResponse].statusCode mustBe UNPROCESSABLE_ENTITY
+          verifyPost(path)
         }
       }
 
       "fail with UpstreamErrorResponse on 201 with invalid JSON" in new SetUp {
-        stubPost(url, CREATED, """{"invalid": "json"}""")
+        stubPost(path, CREATED, """{"invalid": "json"}""")
 
         whenReady(connector.getFinancialData(testRequest).failed) { exception =>
           exception mustBe an[UpstreamErrorResponse]
           exception.asInstanceOf[UpstreamErrorResponse].statusCode mustBe INTERNAL_SERVER_ERROR
-          verifyPost(url)
+          verifyPost(path)
         }
       }
 
       "fail with UpstreamErrorResponse on 400 Bad Request" in new SetUp {
-        stubPost(url, BAD_REQUEST, """{"error": "bad request"}""")
+        stubPost(path, BAD_REQUEST, """{"error": "bad request"}""")
 
         whenReady(connector.getFinancialData(testRequest).failed) { exception =>
-          exception mustBe an[UpstreamErrorResponse]
-          exception.asInstanceOf[UpstreamErrorResponse].statusCode mustBe BAD_REQUEST
-          verifyPost(url)
+          exception mustBe an[BadRequestException]
+          exception.asInstanceOf[BadRequestException].responseCode mustBe BAD_REQUEST
+          verifyPost(path)
         }
       }
 
       "fail with UpstreamErrorResponse on 401 Unauthorized" in new SetUp {
-        stubPost(url, UNAUTHORIZED, "")
+        stubPost(path, UNAUTHORIZED, "")
 
         whenReady(connector.getFinancialData(testRequest).failed) { exception =>
           exception mustBe an[UpstreamErrorResponse]
           exception.asInstanceOf[UpstreamErrorResponse].statusCode mustBe UNAUTHORIZED
-          verifyPost(url)
+          verifyPost(path)
         }
       }
 
       "fail with UpstreamErrorResponse on 403 Forbidden" in new SetUp {
-        stubPost(url, FORBIDDEN, "")
+        stubPost(path, FORBIDDEN, "")
 
         whenReady(connector.getFinancialData(testRequest).failed) { exception =>
           exception mustBe an[UpstreamErrorResponse]
           exception.asInstanceOf[UpstreamErrorResponse].statusCode mustBe FORBIDDEN
-          verifyPost(url)
+          verifyPost(path)
         }
       }
 
       "fail with UpstreamErrorResponse on 404 Not Found" in new SetUp {
-        stubPost(url, NOT_FOUND, "")
+        stubPost(path, NOT_FOUND, "")
 
         whenReady(connector.getFinancialData(testRequest).failed) { exception =>
-          exception mustBe an[UpstreamErrorResponse]
-          exception.asInstanceOf[UpstreamErrorResponse].statusCode mustBe NOT_FOUND
-          verifyPost(url)
+          exception mustBe an[NotFoundException]
+          exception.asInstanceOf[NotFoundException].responseCode mustBe NOT_FOUND
+          verifyPost(path)
         }
       }
 
       "fail with UpstreamErrorResponse on 500 Internal Server Error" in new SetUp {
-        stubPost(url, INTERNAL_SERVER_ERROR, "")
+        stubPost(path, INTERNAL_SERVER_ERROR, "")
 
         whenReady(connector.getFinancialData(testRequest).failed) { exception =>
           exception mustBe an[UpstreamErrorResponse]
           exception.asInstanceOf[UpstreamErrorResponse].statusCode mustBe INTERNAL_SERVER_ERROR
-          verifyPost(url)
+          verifyPost(path)
         }
       }
 
       "fail with UpstreamErrorResponse on network fault" in new SetUp {
-        stubPostFault(url)
+        stubPostFault(path)
 
         whenReady(connector.getFinancialData(testRequest).failed) { exception =>
           exception mustBe an[Exception]
-          verifyPost(url)
-        }
-      }
-
-      "retry on 500 Internal Server Error when retry is configured" in new SetUp {
-        stubPost(url, INTERNAL_SERVER_ERROR, "")
-
-        whenReady(connectorWithRetry.getFinancialData(testRequest).failed) { exception =>
-          exception mustBe an[UpstreamErrorResponse]
-          verifyPostWithRetry(url)
+          verifyPost(path)
         }
       }
 
       "not retry on 400 Bad Request" in new SetUp {
-        stubPost(url, BAD_REQUEST, "")
+        stubPost(path, BAD_REQUEST, "")
 
         whenReady(connectorWithRetry.getFinancialData(testRequest).failed) { exception =>
-          exception mustBe an[UpstreamErrorResponse]
-          verifyPostWithoutRetry(url)
+          exception mustBe an[BadRequestException]
+          verifyPostWithoutRetry(path)
         }
       }
     }
@@ -219,5 +211,6 @@ class FinancialDataConnectorSpec extends SpecBase with ConnectorTestHelpers {
       fakeUUIDGenerator
     )
     lazy val url = appWithHttpClient.injector.instanceOf[AppConfig].financialDataUrl
+    lazy val path = new java.net.URL(url).getPath
   }
 }

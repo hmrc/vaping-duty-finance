@@ -22,7 +22,7 @@ import play.api.inject.bind
 import play.api.inject.guice.GuiceApplicationBuilder
 import uk.gov.hmrc.http.client.HttpClientV2
 
-trait ConnectorTestHelpers extends BeforeAndAfterAll with BeforeAndAfterEach with WireMockHelper {
+trait ConnectorTestHelpers extends BeforeAndAfterAll with BeforeAndAfterEach with WireMockHelper with SpecBase {
   this: Suite with TestData =>
 
   protected val endpointName: String

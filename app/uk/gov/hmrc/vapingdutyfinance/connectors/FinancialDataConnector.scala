@@ -66,14 +66,6 @@ class FinancialDataConnector @Inject()(
                 logger.warn(s"Failed to parse financial data response: $errors")
                 Future.failed(UpstreamErrorResponse(s"Invalid JSON response from financial data API", INTERNAL_SERVER_ERROR))
             }
-          case UNPROCESSABLE_ENTITY =>
-            Json.parse(response.body).validate[FinancialDataErrorResponse] match {
-              case JsSuccess(error, _) =>
-                Future.successful(Left(error))
-              case JsError(errors) =>
-                logger.warn(s"Failed to parse error response: $errors")
-                Future.failed(UpstreamErrorResponse(s"Invalid error response from financial data API", INTERNAL_SERVER_ERROR))
-            }
           case status =>
             logger.warn(s"Unexpected response from financial data API: status=$status, body=${response.body}")
             Future.failed(UpstreamErrorResponse(s"Unexpected response from financial data API", status))

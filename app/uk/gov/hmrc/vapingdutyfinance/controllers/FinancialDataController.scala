@@ -48,6 +48,9 @@ class FinancialDataController @Inject()(
       case Left(error) =>
         logger.error(s"Error retrieving outstanding payments for vpdId=${request.vpdId}: $error")
         InternalServerError(Json.obj("error" -> "An error occurred while retrieving financial data"))
+    }.recover { case ex =>
+      logger.error(s"Unexpected error in getOutstandingPayments: ${ex.getMessage}", ex)
+      InternalServerError(Json.obj("error" -> "An error occurred while retrieving financial data"))
     }
   }
 

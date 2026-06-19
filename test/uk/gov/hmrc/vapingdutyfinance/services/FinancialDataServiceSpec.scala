@@ -90,7 +90,7 @@ class FinancialDataServiceSpec extends SpecBase {
   "FinancialDataService" - {
     "getOutstandingPayments must" - {
       "return outstanding payments when connector returns success" in {
-        when(mockConnector.getFinancialData(any())(any()))
+        when(mockConnector.getFinancialData(any())(using any()))
           .thenReturn(Future.successful(Right(testResponse)))
 
         whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
@@ -117,7 +117,7 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(any()))
+        when(mockConnector.getFinancialData(any())(using any()))
           .thenReturn(Future.successful(Right(responseWithMixed)))
 
         whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
@@ -137,7 +137,7 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(any()))
+        when(mockConnector.getFinancialData(any())(using any()))
           .thenReturn(Future.successful(Right(emptyResponse)))
 
         whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
@@ -147,7 +147,7 @@ class FinancialDataServiceSpec extends SpecBase {
       }
 
       "use default date range when dates not provided" in {
-        when(mockConnector.getFinancialData(any())(any()))
+        when(mockConnector.getFinancialData(any())(using any()))
           .thenReturn(Future.successful(Right(testResponse)))
 
         whenReady(service.getOutstandingPayments(testVpdId, None, None)) { result =>
@@ -156,7 +156,7 @@ class FinancialDataServiceSpec extends SpecBase {
       }
 
       "return error message when connector returns error response" in {
-        when(mockConnector.getFinancialData(any())(any()))
+        when(mockConnector.getFinancialData(any())(using any()))
           .thenReturn(Future.successful(Left(testErrorResponse)))
 
         whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
@@ -182,7 +182,7 @@ class FinancialDataServiceSpec extends SpecBase {
             errors = testErrorResponse.errors.copy(code = errorCode)
           )
 
-          when(mockConnector.getFinancialData(any())(any()))
+          when(mockConnector.getFinancialData(any())(using any()))
             .thenReturn(Future.successful(Left(errorResponse)))
 
           whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
@@ -193,7 +193,7 @@ class FinancialDataServiceSpec extends SpecBase {
       }
 
       "return error message when connector fails" in {
-        when(mockConnector.getFinancialData(any())(any()))
+        when(mockConnector.getFinancialData(any())(using any()))
           .thenReturn(Future.failed(UpstreamErrorResponse("Error", 500)))
 
         whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
