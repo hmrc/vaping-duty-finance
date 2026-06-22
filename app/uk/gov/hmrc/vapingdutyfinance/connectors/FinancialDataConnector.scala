@@ -22,19 +22,19 @@ import play.api.libs.json.{JsError, JsSuccess, Json}
 import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps, UpstreamErrorResponse}
-import uk.gov.hmrc.http.HttpReads.Implicits
 import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.{FinancialDataErrorResponse, FinancialDataRequest, FinancialDataResponse}
 import uk.gov.hmrc.vapingdutyfinance.utils.UUIDGenerator
 
 import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneOffset}
+import java.time.{Clock, Instant, ZoneOffset}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class FinancialDataConnector @Inject()(
   httpClient: HttpClientV2,
+  clock: Clock,
   appConfig: AppConfig,
   uuidGenerator: UUIDGenerator
 )(using ExecutionContext) extends Logging {
@@ -45,7 +45,7 @@ class FinancialDataConnector @Inject()(
     request: FinancialDataRequest
   )(using hc: HeaderCarrier): Future[Either[FinancialDataErrorResponse, FinancialDataResponse]] = {
     val correlationId = hc.requestId.map(_.value).getOrElse(uuidGenerator.uuid)
-    val receiptDate = Instant.now().atOffset(ZoneOffset.UTC).format(dateTimeFormatter)
+    val receiptDate = Instant.now(clock).atOffset(ZoneOffset.UTC).format(dateTimeFormatter)
 
     httpClient
       .post(url"${appConfig.financialDataUrl}")
