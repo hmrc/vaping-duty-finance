@@ -57,7 +57,4 @@ class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig)
   val addPostedInterestDetailsDefault = false
   val addAccruingInterestDetailsDefault = true
   
-  // Payment Status Constants
-  val statusOutstanding = "Outstanding"
-  val statusOverdue = "Overdue"
 }

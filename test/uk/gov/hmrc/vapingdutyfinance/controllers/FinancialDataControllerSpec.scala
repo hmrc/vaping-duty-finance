@@ -23,7 +23,7 @@ import play.api.libs.json.Json
 import play.api.test.FakeRequest
 import play.api.test.Helpers.*
 import uk.gov.hmrc.vapingdutyfinance.base.SpecBase
-import uk.gov.hmrc.vapingdutyfinance.models.OutstandingPayment
+import uk.gov.hmrc.vapingdutyfinance.models.{OutstandingPayment, PaymentStatus}
 import uk.gov.hmrc.vapingdutyfinance.services.FinancialDataService
 
 import scala.concurrent.Future
@@ -38,7 +38,7 @@ class FinancialDataControllerSpec extends SpecBase {
     cc
   )
 
-  val testOutstandingPayment: OutstandingPayment = OutstandingPayment(chargeReference = "XP001286394838", period = "2026-10-01 to 2026-12-31", amountDue = BigDecimal("100.0"), dueDate = "2026-10-01", status = "Outstanding")
+  val testOutstandingPayment: OutstandingPayment = OutstandingPayment(chargeReference = "XP001286394838", period = "2026-10-01 to 2026-12-31", amountDue = BigDecimal("100.0"), dueDate = "2026-10-01", status = PaymentStatus.Due)
 
   "FinancialDataController" - {
     "getOutstandingPayments must" - {

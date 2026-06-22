@@ -20,7 +20,7 @@ import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
 import uk.gov.hmrc.vapingdutyfinance.connectors.FinancialDataConnector
-import uk.gov.hmrc.vapingdutyfinance.models.OutstandingPayment
+import uk.gov.hmrc.vapingdutyfinance.models.{OutstandingPayment, PaymentStatus}
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
 
 import java.time.format.DateTimeFormatter
@@ -132,11 +132,11 @@ class FinancialDataService @Inject()(
     }
   }
 
-  private def determineStatus(netDueDate: Option[LocalDate]): String = {
+  private def determineStatus(netDueDate: Option[LocalDate]): PaymentStatus = {
     netDueDate match {
-      case Some(dueDate) if dueDate.isBefore(LocalDate.now(clock)) => appConfig.statusOverdue
-      case Some(_) => appConfig.statusOutstanding
-      case None => appConfig.statusOutstanding
+      case Some(dueDate) if dueDate.isBefore(LocalDate.now(clock)) => PaymentStatus.Overdue
+      case Some(_) => PaymentStatus.Due
+      case None => PaymentStatus.Due
     }
   }
 
@@ -153,27 +153,42 @@ class FinancialDataService @Inject()(
     case _ => "An error occurred while retrieving financial data"
   }
 
-  private def getStaticOutstandingPayments(): Seq[OutstandingPayment] = Seq(
-    OutstandingPayment(
-      chargeReference = "XM002610011594",
-      period = "2024-01-01 to 2024-01-31",
-      amountDue = BigDecimal("1250.50"),
-      dueDate = "2024-02-15",
-      status = appConfig.statusOverdue
-    ),
-    OutstandingPayment(
-      chargeReference = "XM002610011595",
-      period = "2024-02-01 to 2024-02-29",
-      amountDue = BigDecimal("2500.00"),
-      dueDate = LocalDate.now(clock).plusDays(5).format(dateFormatter),
-      status = appConfig.statusOutstanding
-    ),
-    OutstandingPayment(
-      chargeReference = "XM002610011596",
-      period = "2024-03-01 to 2024-03-31",
-      amountDue = BigDecimal("750.25"),
-      dueDate = LocalDate.now(clock).plusDays(15).format(dateFormatter),
-      status = appConfig.statusOutstanding
+  private def getStaticOutstandingPayments(): Seq[OutstandingPayment] = {
+    val payments = Seq(
+      OutstandingPayment(
+        chargeReference = "XM002610011594",
+        period = "2024-01-01 to 2024-01-31",
+        amountDue = BigDecimal("1250.50"),
+        dueDate = "2024-02-15",
+        status = PaymentStatus.Overdue
+      ),
+      OutstandingPayment(
+        chargeReference = "XM002610011595",
+        period = "2024-02-01 to 2024-02-29",
+        amountDue = BigDecimal("2500.00"),
+        dueDate = LocalDate.now(clock).plusDays(5).format(dateFormatter),
+        status = PaymentStatus.Due
+      ),
+      OutstandingPayment(
+        chargeReference = "XM002610011596",
+        period = "2024-03-01 to 2024-03-31",
+        amountDue = BigDecimal("750.25"),
+        dueDate = LocalDate.now(clock).plusDays(15).format(dateFormatter),
+        status = PaymentStatus.Due
+      )
     )
-  )
+    
+    // If all amounts are zero, return a single payment with NothingToPay status
+    if (payments.forall(_.amountDue == BigDecimal(0))) {
+      Seq(OutstandingPayment(
+        chargeReference = "",
+        period = "",
+        amountDue = BigDecimal(0),
+        dueDate = "",
+        status = PaymentStatus.NothingToPay
+      ))
+    } else {
+      payments
+    }
+  }
 }

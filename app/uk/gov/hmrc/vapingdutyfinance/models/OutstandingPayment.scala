@@ -23,7 +23,7 @@ final case class OutstandingPayment(
                                      period: String,
                                      amountDue: BigDecimal,
                                      dueDate: String,
-                                     status: String
+                                     status: PaymentStatus
                                    )
 
 object OutstandingPayment {

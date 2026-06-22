@@ -202,11 +202,13 @@ class FinancialDataConnectorSpec extends SpecBase with ConnectorTestHelpers {
     val fakeUUIDGenerator = FakeUUIDGenerator()
     val connector = FinancialDataConnector(
       httpClientV2,
+      clock,
       appWithHttpClient.injector.instanceOf[AppConfig],
       fakeUUIDGenerator
     )
     val connectorWithRetry = FinancialDataConnector(
       httpClientV2,
+      clock,
       appWithHttpClientAndRetry.injector.instanceOf[AppConfig],
       fakeUUIDGenerator
     )

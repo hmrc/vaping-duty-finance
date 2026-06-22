@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.vapingdutyfinance.services
 
-import org.mockito.ArgumentMatchers.{any, eq as eqTo}
+import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.vapingdutyfinance.base.SpecBase
@@ -99,7 +99,6 @@ class FinancialDataServiceSpec extends SpecBase {
           payments must not be empty
           payments.head.chargeReference mustBe "XP001286394838"
           payments.head.amountDue mustBe BigDecimal("100.0")
-          payments.head.description mustBe "VPD Return"
         }
       }
 
