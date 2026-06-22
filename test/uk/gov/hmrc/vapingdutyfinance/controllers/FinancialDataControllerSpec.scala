@@ -38,14 +38,7 @@ class FinancialDataControllerSpec extends SpecBase {
     cc
   )
 
-  val testOutstandingPayment: OutstandingPayment = OutstandingPayment(
-    chargeReference = "XP001286394838",
-    period = "2026-10-01 to 2026-12-31",
-    amountDue = BigDecimal("100.0"),
-    dueDate = "2026-10-01",
-    description = "VPD Return",
-    status = "Outstanding"
-  )
+  val testOutstandingPayment: OutstandingPayment = OutstandingPayment(chargeReference = "XP001286394838", period = "2026-10-01 to 2026-12-31", amountDue = BigDecimal("100.0"), dueDate = "2026-10-01", status = "Outstanding")
 
   "FinancialDataController" - {
     "getOutstandingPayments must" - {

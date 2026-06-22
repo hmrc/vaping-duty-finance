@@ -19,13 +19,12 @@ package uk.gov.hmrc.vapingdutyfinance.models
 import play.api.libs.json.{Json, OFormat}
 
 final case class OutstandingPayment(
-  chargeReference: String,
-  period: String,
-  amountDue: BigDecimal,
-  dueDate: String,
-  description: String,
-  status: String
-)
+                                     chargeReference: String,
+                                     period: String,
+                                     amountDue: BigDecimal,
+                                     dueDate: String,
+                                     status: String
+                                   )
 
 object OutstandingPayment {
   given format: OFormat[OutstandingPayment] = Json.format[OutstandingPayment]
