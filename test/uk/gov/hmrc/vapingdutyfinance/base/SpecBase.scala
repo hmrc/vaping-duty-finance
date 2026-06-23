@@ -19,6 +19,7 @@ package uk.gov.hmrc.vapingdutyfinance.base
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.Application
@@ -33,12 +34,17 @@ import uk.gov.hmrc.vapingdutyfinance.controllers.actions.FakeAuthorisedAction
 import scala.concurrent.ExecutionContext
 
 trait SpecBase
-    extends AnyFreeSpec
+  extends AnyFreeSpec
     with Matchers
     with MockitoSugar
     with ScalaFutures
     with GuiceOneAppPerSuite
     with TestData {
+
+  implicit override val patienceConfig: PatienceConfig = PatienceConfig(
+    timeout = Span(5, Seconds),
+    interval = Span(50, Millis)
+  )
 
   override def fakeApplication(): Application =
     GuiceApplicationBuilder()
