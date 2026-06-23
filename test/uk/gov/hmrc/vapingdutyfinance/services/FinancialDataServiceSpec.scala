@@ -20,6 +20,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.vapingdutyfinance.base.SpecBase
+import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
 import uk.gov.hmrc.vapingdutyfinance.connectors.FinancialDataConnector
 import uk.gov.hmrc.vapingdutyfinance.models.PaymentStatus
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
@@ -100,31 +101,6 @@ class FinancialDataServiceSpec extends SpecBase {
           payments must not be empty
           payments.head.chargeReference mustBe "XP001286394838"
           payments.head.amountDue mustBe BigDecimal("100.0")
-        }
-      }
-
-      "filter out documents with no outstanding amount" in {
-        val docWithoutOutstanding = testDocWithOutstanding.copy(
-          documentOutstandingAmount = Some(BigDecimal("0.0")),
-          chargeReferenceNumber = Some("DIFFERENT123")
-        )
-        
-        val responseWithMixed = testResponse.copy(
-          success = testResponse.success.copy(
-            financialData = testResponse.success.financialData.map(fd =>
-              fd.copy(documentDetails = Some(Seq(testDocWithOutstanding, docWithoutOutstanding)))
-            )
-          )
-        )
-
-        when(mockConnector.getFinancialData(any())(using any()))
-          .thenReturn(Future.successful(Right(responseWithMixed)))
-
-        whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.isRight mustBe true
-          val payments = result.getOrElse(Seq.empty)
-          payments.size mustBe 1
-          payments.head.chargeReference mustBe "XP001286394838"
         }
       }
 
@@ -460,28 +436,6 @@ class FinancialDataServiceSpec extends SpecBase {
         }
       }
 
-      "default to 0 when outstanding amount is None" in {
-        val docWithNoOutstandingAmount = testDocWithOutstanding.copy(
-          documentOutstandingAmount = None
-        )
-
-        val response = testResponse.copy(
-          success = testResponse.success.copy(
-            financialData = testResponse.success.financialData.map(fd =>
-              fd.copy(documentDetails = Some(Seq(docWithNoOutstandingAmount)))
-            )
-          )
-        )
-
-        when(mockConnector.getFinancialData(any())(using any()))
-          .thenReturn(Future.successful(Right(response)))
-
-        whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.isRight mustBe true
-          result.getOrElse(Seq.empty) mustBe empty
-        }
-      }
-
       "format period as 'From YYYY-MM-DD' when only periodFromDate is present" in {
         val docWithOnlyFromDate = testDocWithOutstanding.copy(
           lineItemDetails = Some(Seq(
@@ -625,6 +579,62 @@ class FinancialDataServiceSpec extends SpecBase {
           val payments = result.getOrElse(Seq.empty)
           payments.size mustBe 3
           payments.map(_.amountDue) must contain allOf (BigDecimal("100.0"), BigDecimal("200.0"), BigDecimal("300.0"))
+        }
+      }
+    }
+
+    "when using static financial data must" - {
+      "return static payments when useStaticFinancialData is true" in {
+        val mockAppConfigWithStatic = mock[uk.gov.hmrc.vapingdutyfinance.config.AppConfig]
+        when(mockAppConfigWithStatic.useStaticFinancialData).thenReturn(true)
+        
+        val serviceWithStaticData = FinancialDataService(mockConnector, mockAppConfigWithStatic, clock)
+
+        whenReady(serviceWithStaticData.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.isRight mustBe true
+          val payments = result.getOrElse(Seq.empty)
+          payments.size mustBe 3
+        }
+      }
+
+      "return first static payment with correct values" in {
+        val mockAppConfigWithStatic = mock[AppConfig]
+        when(mockAppConfigWithStatic.useStaticFinancialData).thenReturn(true)
+        
+        val serviceWithStaticData = FinancialDataService(mockConnector, mockAppConfigWithStatic, clock)
+
+        whenReady(serviceWithStaticData.getOutstandingPayments(testVpdId, None, None)) { result =>
+          result.isRight mustBe true
+          val payments = result.getOrElse(Seq.empty)
+          val firstPayment = payments.head
+          
+          firstPayment.chargeReference mustBe "XM002610011594"
+          firstPayment.period mustBe "2024-01-01 to 2024-01-31"
+          firstPayment.amountDue mustBe BigDecimal("1250.50")
+          firstPayment.dueDate mustBe "2024-02-15"
+          firstPayment.status mustBe PaymentStatus.Overdue
+        }
+      }
+
+      "ignore date parameters when using static data" in {
+        val mockAppConfigWithStatic = mock[uk.gov.hmrc.vapingdutyfinance.config.AppConfig]
+        when(mockAppConfigWithStatic.useStaticFinancialData).thenReturn(true)
+        
+        val serviceWithStaticData = FinancialDataService(mockConnector, mockAppConfigWithStatic, clock)
+
+        // Call with different date parameters
+        val result1 = serviceWithStaticData.getOutstandingPayments(testVpdId, Some(LocalDate.of(2020, 1, 1)), Some(LocalDate.of(2020, 12, 31)))
+        val result2 = serviceWithStaticData.getOutstandingPayments(testVpdId, Some(LocalDate.of(2025, 1, 1)), Some(LocalDate.of(2025, 12, 31)))
+        val result3 = serviceWithStaticData.getOutstandingPayments(testVpdId, None, None)
+
+        whenReady(result1) { payments1 =>
+          whenReady(result2) { payments2 =>
+            whenReady(result3) { payments3 =>
+              // All should return the same static data regardless of dates
+              payments1 mustBe payments2
+              payments2 mustBe payments3
+            }
+          }
         }
       }
     }

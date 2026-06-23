@@ -45,27 +45,27 @@ class FinancialDataService @Inject()(
 
     if (appConfig.useStaticFinancialData) {
       logger.info(s"Using static financial data for vpdId=$vpdId")
-      Future.successful(Right(getStaticOutstandingPayments()))
-    }
+      Future.successful(Right(getStaticOutstandingPayments))
+    } else {
+      val effectiveDateFrom = dateFrom.getOrElse(
+        LocalDate.now(clock).minusMonths(appConfig.defaultDateRangeMonths.toLong)
+      )
+      val effectiveDateTo = dateTo.getOrElse(LocalDate.now(clock))
 
-    val effectiveDateFrom = dateFrom.getOrElse(
-      LocalDate.now(clock).minusMonths(appConfig.defaultDateRangeMonths.toLong)
-    )
-    val effectiveDateTo = dateTo.getOrElse(LocalDate.now(clock))
+      val request = buildRequest(vpdId, effectiveDateFrom, effectiveDateTo)
 
-    val request = buildRequest(vpdId, effectiveDateFrom, effectiveDateTo)
-
-    connector.getFinancialData(request).map {
-      case Right(response) =>
-        val payments = transformToOutstandingPayments(response)
-        Right(payments)
-      case Left(error) =>
-        val errorMessage = mapErrorCodeToMessage(error.errors.code)
-        logger.warn(s"Error from financial data API: code=${error.errors.code}, message=${error.errors.text}")
-        Left(errorMessage)
-    }.recover { case ex =>
-      logger.warn(s"Unexpected error calling financial data API: ${ex.getMessage}", ex)
-      Left("An unexpected error occurred while retrieving financial data")
+      connector.getFinancialData(request).map {
+        case Right(response) =>
+          val payments = transformToOutstandingPayments(response)
+          Right(payments)
+        case Left(error) =>
+          val errorMessage = mapErrorCodeToMessage(error.errors.code)
+          logger.warn(s"Error from financial data API: code=${error.errors.code}, message=${error.errors.text}")
+          Left(errorMessage)
+      }.recover { case ex =>
+        logger.warn(s"Unexpected error calling financial data API: ${ex.getMessage}", ex)
+        Left("An unexpected error occurred while retrieving financial data")
+      }
     }
   }
 
@@ -104,7 +104,6 @@ class FinancialDataService @Inject()(
     response.success.financialData
       .flatMap(_.documentDetails)
       .getOrElse(Seq.empty)
-      .filter(doc => doc.documentOutstandingAmount.exists(_ > 0))
       .flatMap { doc =>
         doc.lineItemDetails.getOrElse(Seq.empty).map { lineItem =>
           val period = formatPeriod(lineItem.periodFromDate, lineItem.periodToDate)
@@ -152,7 +151,7 @@ class FinancialDataService @Inject()(
     case _ => "An error occurred while retrieving financial data"
   }
 
-  private def getStaticOutstandingPayments(): Seq[OutstandingPayment] = {
+  private def getStaticOutstandingPayments: Seq[OutstandingPayment] = {
     val payments = Seq(
       OutstandingPayment(
         chargeReference = "XM002610011594",

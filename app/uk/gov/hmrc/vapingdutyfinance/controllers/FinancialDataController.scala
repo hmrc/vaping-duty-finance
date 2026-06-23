@@ -30,15 +30,15 @@ import scala.concurrent.ExecutionContext
 
 @Singleton
 class FinancialDataController @Inject()(
-  authorised: AuthorisedAction,
-  service: FinancialDataService,
-  cc: ControllerComponents
-)(using ExecutionContext) extends BackendController(cc) with Logging {
+                                         authorised: AuthorisedAction,
+                                         service: FinancialDataService,
+                                         cc: ControllerComponents
+                                       )(using ExecutionContext) extends BackendController(cc) with Logging {
 
   def getOutstandingPayments(
-    dateFrom: Option[String],
-    dateTo: Option[String]
-  ): Action[AnyContent] = authorised.async { implicit request =>
+                              dateFrom: Option[String],
+                              dateTo: Option[String]
+                            ): Action[AnyContent] = authorised.async { implicit request =>
     val parsedDateFrom = dateFrom.flatMap(parseDate)
     val parsedDateTo = dateTo.flatMap(parseDate)
 

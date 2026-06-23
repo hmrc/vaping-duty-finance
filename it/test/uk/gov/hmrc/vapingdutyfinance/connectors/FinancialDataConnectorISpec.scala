@@ -117,6 +117,17 @@ class FinancialDataConnectorISpec extends SpecBase with ConnectorTestHelpers {
         }
       }
 
+      "fail with UpstreamErrorResponse on 200 OK instead of 201 Created" in new SetUp {
+        stubPost(path, OK, Json.toJson(testSuccessResponse).toString())
+
+        whenReady(connector.getFinancialData(testRequest).failed) { exception =>
+          exception mustBe an[UpstreamErrorResponse]
+          exception.asInstanceOf[UpstreamErrorResponse].statusCode mustBe OK
+          exception.asInstanceOf[UpstreamErrorResponse].message must include("Unexpected response from financial data API")
+          verifyPost(path)
+        }
+      }
+
       "fail with UpstreamErrorResponse on 400 Bad Request" in new SetUp {
         stubPost(path, BAD_REQUEST, """{"error": "bad request"}""")
 
