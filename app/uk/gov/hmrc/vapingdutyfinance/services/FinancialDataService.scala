@@ -43,10 +43,9 @@ class FinancialDataService @Inject()(
                               dateTo: Option[LocalDate]
                             )(using HeaderCarrier): Future[Either[String, Seq[OutstandingPayment]]] = {
 
-    // Return static data if flag is enabled
     if (appConfig.useStaticFinancialData) {
       logger.info(s"Using static financial data for vpdId=$vpdId")
-      return Future.successful(Right(getStaticOutstandingPayments()))
+      Future.successful(Right(getStaticOutstandingPayments()))
     }
 
     val effectiveDateFrom = dateFrom.getOrElse(
@@ -178,7 +177,6 @@ class FinancialDataService @Inject()(
       )
     )
     
-    // If all amounts are zero, return a single payment with NothingToPay status
     if (payments.forall(_.amountDue == BigDecimal(0))) {
       Seq(OutstandingPayment(
         chargeReference = "",

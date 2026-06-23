@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,22 +26,15 @@ import uk.gov.hmrc.vapingdutyfinance.utils.FakeUUIDGenerator
 
 import java.time.{Instant, LocalDate}
 
-class FinancialDataConnectorSpec extends SpecBase with ConnectorTestHelpers {
+class FinancialDataConnectorISpec extends SpecBase with ConnectorTestHelpers {
 
   override protected val endpointName = "financial-data"
 
   val testRequest: FinancialDataRequest = FinancialDataRequest(
     taxRegime = "VPD",
-    taxpayerInformation = TaxpayerInformation(
-      idType = "ZVPD",
-      idNumber = testVpdId
-    ),
+    taxpayerInformation = TaxpayerInformation(idType = "ZVPD", idNumber = testVpdId),
     selectionCriteria = SelectionCriteria(
-      dateRange = DateRange(
-        dateType = "POSTING",
-        dateFrom = LocalDate.of(2024, 1, 1),
-        dateTo = LocalDate.of(2024, 12, 31)
-      ),
+      dateRange = DateRange(dateType = "POSTING", dateFrom = LocalDate.of(2024, 1, 1), dateTo = LocalDate.of(2024, 12, 31)),
       includeClearedItems = true,
       includeStatisticalItems = false,
       includePaymentOnAccount = false
@@ -64,9 +57,9 @@ class FinancialDataConnectorSpec extends SpecBase with ConnectorTestHelpers {
             totalAccountOverdue = BigDecimal("1000.0"),
             totalAccountNotYetDue = BigDecimal("250.0"),
             totalAccountCredit = BigDecimal("0.0"),
-            totalAccountBalance = BigDecimal("1250.0")
+            totalAccountBalance = BigDecimal("1250.0"))
           ))
-        )),
+        ),
         documentDetails = Some(Seq(DocumentDetails(
           documentNumber = Some("187346702498"),
           documentType = Some("TRM New Charge"),
@@ -83,11 +76,8 @@ class FinancialDataConnectorSpec extends SpecBase with ConnectorTestHelpers {
           documentOutstandingAmount = Some(BigDecimal("0.0")),
           documentInterestTotals = None,
           documentPenaltyTotals = None,
-          lineItemDetails = None
-        )))
-      ))
-    )
-  )
+          lineItemDetails = None))))
+      )))
 
   val testErrorResponse: FinancialDataErrorResponse = FinancialDataErrorResponse(
     errors = FinancialDataError(
@@ -101,7 +91,6 @@ class FinancialDataConnectorSpec extends SpecBase with ConnectorTestHelpers {
     "getFinancialData must" - {
       "return a FinancialDataResponse on 201 Created with valid response" in new SetUp {
         stubPost(path, CREATED, Json.toJson(testSuccessResponse).toString())
-
         whenReady(connector.getFinancialData(testRequest)) { result =>
           result mustBe Right(testSuccessResponse)
           verifyPost(path)
@@ -196,23 +185,12 @@ class FinancialDataConnectorSpec extends SpecBase with ConnectorTestHelpers {
         }
       }
     }
-  }
-
-  class SetUp extends ConnectorFixture {
-    val fakeUUIDGenerator = FakeUUIDGenerator()
-    val connector = FinancialDataConnector(
-      httpClientV2,
-      clock,
-      appWithHttpClient.injector.instanceOf[AppConfig],
-      fakeUUIDGenerator
-    )
-    val connectorWithRetry = FinancialDataConnector(
-      httpClientV2,
-      clock,
-      appWithHttpClientAndRetry.injector.instanceOf[AppConfig],
-      fakeUUIDGenerator
-    )
-    lazy val url = appWithHttpClient.injector.instanceOf[AppConfig].financialDataUrl
-    lazy val path = new java.net.URL(url).getPath
+    class SetUp extends ConnectorFixture {
+      val fakeUUIDGenerator = FakeUUIDGenerator()
+      val connector = FinancialDataConnector(httpClientV2, clock, appWithHttpClient.injector.instanceOf[AppConfig], fakeUUIDGenerator)
+      val connectorWithRetry = FinancialDataConnector(httpClientV2, clock, appWithHttpClientAndRetry.injector.instanceOf[AppConfig], fakeUUIDGenerator)
+      lazy val url = appWithHttpClient.injector.instanceOf[AppConfig].financialDataUrl
+      lazy val path = new java.net.URL(url).getPath
+    }
   }
 }

@@ -33,17 +33,17 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class FinancialDataConnector @Inject()(
-  httpClient: HttpClientV2,
-  clock: Clock,
-  appConfig: AppConfig,
-  uuidGenerator: UUIDGenerator
-)(using ExecutionContext) extends Logging {
+                                        httpClient: HttpClientV2,
+                                        clock: Clock,
+                                        appConfig: AppConfig,
+                                        uuidGenerator: UUIDGenerator
+                                      )(using ExecutionContext) extends Logging {
 
   private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
 
-  def getFinancialData(
-    request: FinancialDataRequest
-  )(using hc: HeaderCarrier): Future[Either[FinancialDataErrorResponse, FinancialDataResponse]] = {
+  def getFinancialData(request: FinancialDataRequest)
+                      (using hc: HeaderCarrier): Future[Either[FinancialDataErrorResponse, FinancialDataResponse]] = {
+
     val correlationId = hc.requestId.map(_.value).getOrElse(uuidGenerator.uuid)
     val receiptDate = Instant.now(clock).atOffset(ZoneOffset.UTC).format(dateTimeFormatter)
 
@@ -64,11 +64,11 @@ class FinancialDataConnector @Inject()(
                 Future.successful(Right(data))
               case JsError(errors) =>
                 logger.warn(s"Failed to parse financial data response: $errors")
-                Future.failed(UpstreamErrorResponse(s"Invalid JSON response from financial data API", INTERNAL_SERVER_ERROR))
+                Future.failed(UpstreamErrorResponse("Invalid JSON response from financial data API", INTERNAL_SERVER_ERROR))
             }
           case status =>
             logger.warn(s"Unexpected response from financial data API: status=$status, body=${response.body}")
-            Future.failed(UpstreamErrorResponse(s"Unexpected response from financial data API", status))
+            Future.failed(UpstreamErrorResponse("Unexpected response from financial data API", status))
         }
       }
       .recoverWith { case e: UpstreamErrorResponse =>

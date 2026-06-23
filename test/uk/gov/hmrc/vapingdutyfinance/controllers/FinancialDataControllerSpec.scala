@@ -68,13 +68,9 @@ class FinancialDataControllerSpec extends SpecBase {
         when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(using any()))
           .thenReturn(Future.successful(Right(Seq(testOutstandingPayment))))
 
-        val request = FakeRequest(
-          GET,
-          routes.FinancialDataController.getOutstandingPayments(
-            Some("2024-01-01"),
-            Some("2024-12-31")
-          ).url
-        )
+        val request =
+          FakeRequest(GET, routes.FinancialDataController.getOutstandingPayments(Some("2024-01-01"), Some("2024-12-31")).url)
+
         val result = controller.getOutstandingPayments(Some("2024-01-01"), Some("2024-12-31"))(request)
 
         status(result) mustBe Status.OK
@@ -106,13 +102,9 @@ class FinancialDataControllerSpec extends SpecBase {
         when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(using any()))
           .thenReturn(Future.successful(Right(Seq(testOutstandingPayment))))
 
-        val request = FakeRequest(
-          GET,
-          routes.FinancialDataController.getOutstandingPayments(
-            Some("invalid-date"),
-            Some("2024-12-31")
-          ).url
-        )
+        val request =
+          FakeRequest(GET, routes.FinancialDataController.getOutstandingPayments(Some("invalid-date"), Some("2024-12-31")).url)
+
         val result = controller.getOutstandingPayments(Some("invalid-date"), Some("2024-12-31"))(request)
 
         status(result) mustBe Status.OK
