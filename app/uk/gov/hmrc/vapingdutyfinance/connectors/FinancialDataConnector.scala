@@ -23,7 +23,7 @@ import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps, UpstreamErrorResponse}
 import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
-import uk.gov.hmrc.vapingdutyfinance.models.financialdata.{FinancialDataErrorResponse, FinancialDataRequest, FinancialDataResponse}
+import uk.gov.hmrc.vapingdutyfinance.models.financialdata.{FinancialDataRequest, FinancialDataResponse}
 import uk.gov.hmrc.vapingdutyfinance.utils.UUIDGenerator
 
 import java.time.format.DateTimeFormatter
@@ -42,7 +42,7 @@ class FinancialDataConnector @Inject()(
   private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
 
   def getFinancialData(request: FinancialDataRequest)
-                      (using hc: HeaderCarrier): Future[Either[FinancialDataErrorResponse, FinancialDataResponse]] = {
+                      (using hc: HeaderCarrier): Future[FinancialDataResponse] = {
 
     val correlationId = hc.requestId.map(_.value).getOrElse(uuidGenerator.uuid)
     val receiptDate = Instant.now(clock).atOffset(ZoneOffset.UTC).format(dateTimeFormatter)
@@ -61,19 +61,15 @@ class FinancialDataConnector @Inject()(
           case CREATED =>
             Json.parse(response.body).validate[FinancialDataResponse] match {
               case JsSuccess(data, _) =>
-                Future.successful(Right(data))
+                Future.successful(data)
               case JsError(errors) =>
                 logger.warn(s"Failed to parse financial data response: $errors")
                 Future.failed(UpstreamErrorResponse("Invalid JSON response from financial data API", INTERNAL_SERVER_ERROR))
             }
           case status =>
-            logger.warn(s"Unexpected response from financial data API: status=$status, body=${response.body}")
+            logger.warn(s"Unexpected response from financial data API: status=$status")
             Future.failed(UpstreamErrorResponse("Unexpected response from financial data API", status))
         }
-      }
-      .recoverWith { case e: UpstreamErrorResponse =>
-        logger.warn(s"Error calling financial data API: ${e.getMessage}")
-        Future.failed(e)
       }
   }
 }

@@ -41,11 +41,11 @@ class FinancialDataService @Inject()(
                               vpdId: String,
                               dateFrom: Option[LocalDate],
                               dateTo: Option[LocalDate]
-                            )(using HeaderCarrier): Future[Either[String, Seq[OutstandingPayment]]] = {
+                            )(using HeaderCarrier): Future[Seq[OutstandingPayment]] = {
 
     if (appConfig.useStaticFinancialData) {
       logger.info(s"Using static financial data for vpdId=$vpdId")
-      Future.successful(Right(getStaticOutstandingPayments))
+      Future.successful(getStaticOutstandingPayments)
     } else {
       val effectiveDateFrom = dateFrom.getOrElse(
         LocalDate.now(clock).minusMonths(appConfig.defaultDateRangeMonths.toLong)
@@ -54,18 +54,12 @@ class FinancialDataService @Inject()(
 
       val request = buildRequest(vpdId, effectiveDateFrom, effectiveDateTo)
 
-      connector.getFinancialData(request).map {
-        case Right(response) =>
-          val payments = transformToOutstandingPayments(response)
-          Right(payments)
-        case Left(error) =>
-          val errorMessage = mapErrorCodeToMessage(error.errors.code)
-          logger.warn(s"Error from financial data API: code=${error.errors.code}, message=${error.errors.text}")
-          Left(errorMessage)
-      }.recover { case ex =>
-        logger.warn(s"Unexpected error calling financial data API: ${ex.getMessage}", ex)
-        Left("An unexpected error occurred while retrieving financial data")
-      }
+      connector.getFinancialData(request)
+        .map(response => transformToOutstandingPayments(response))
+        .recoverWith { case ex =>
+          logger.warn(s"Error calling financial data API for vpdId=$vpdId: ${ex.getMessage}", ex)
+          Future.failed(ex)
+        }
     }
   }
 
@@ -101,7 +95,7 @@ class FinancialDataService @Inject()(
   }
 
   private def transformToOutstandingPayments(response: FinancialDataResponse): Seq[OutstandingPayment] = {
-    response.success.financialData
+    val payments = response.success.financialData
       .flatMap(_.documentDetails)
       .getOrElse(Seq.empty)
       .flatMap { doc =>
@@ -119,6 +113,8 @@ class FinancialDataService @Inject()(
           )
         }
       }
+    
+    applyZeroCheck(payments)
   }
 
   private def formatPeriod(fromDate: Option[LocalDate], toDate: Option[LocalDate]): String = {
@@ -138,21 +134,22 @@ class FinancialDataService @Inject()(
     }
   }
 
-  private def mapErrorCodeToMessage(code: String): String = code match {
-    case "002" => "Invalid tax regime"
-    case "003" => "Request could not be processed"
-    case "015" => "Invalid ID type"
-    case "016" => "Invalid ID number"
-    case "017" => "Invalid search type or parameters"
-    case "018" => "No data found"
-    case "019" => "Invalid date type"
-    case "020" => "Invalid date range"
-    case "135" => "Duplicate submission reference"
-    case _ => "An error occurred while retrieving financial data"
+  private def applyZeroCheck(payments: Seq[OutstandingPayment]): Seq[OutstandingPayment] = {
+    if (payments.forall(_.amountDue == BigDecimal(0))) {
+      Seq(OutstandingPayment(
+        chargeReference = "",
+        period = "",
+        amountDue = BigDecimal(0),
+        dueDate = "",
+        status = PaymentStatus.NothingToPay
+      ))
+    } else {
+      payments
+    }
   }
 
   private def getStaticOutstandingPayments: Seq[OutstandingPayment] = {
-    val payments = Seq(
+    Seq(
       OutstandingPayment(
         chargeReference = "XM002610011594",
         period = "2024-01-01 to 2024-01-31",
@@ -175,17 +172,5 @@ class FinancialDataService @Inject()(
         status = PaymentStatus.Due
       )
     )
-    
-    if (payments.forall(_.amountDue == BigDecimal(0))) {
-      Seq(OutstandingPayment(
-        chargeReference = "",
-        period = "",
-        amountDue = BigDecimal(0),
-        dueDate = "",
-        status = PaymentStatus.NothingToPay
-      ))
-    } else {
-      payments
-    }
   }
 }

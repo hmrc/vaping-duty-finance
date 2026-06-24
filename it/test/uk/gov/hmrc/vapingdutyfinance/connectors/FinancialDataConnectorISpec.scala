@@ -92,17 +92,31 @@ class FinancialDataConnectorISpec extends SpecBase with ConnectorTestHelpers {
       "return a FinancialDataResponse on 201 Created with valid response" in new SetUp {
         stubPost(path, CREATED, Json.toJson(testSuccessResponse).toString())
         whenReady(connector.getFinancialData(testRequest)) { result =>
-          result mustBe Right(testSuccessResponse)
+          result mustBe testSuccessResponse
           verifyPost(path)
         }
       }
 
-      "fail with UpstreamErrorResponse on 422 Unprocessable Entity" in new SetUp {
-        stubPost(path, UNPROCESSABLE_ENTITY, "")
+      "fail with UpstreamErrorResponse on 422 Unprocessable Entity with valid error body" in new SetUp {
+        stubPost(path, UNPROCESSABLE_ENTITY, Json.toJson(testErrorResponse).toString())
 
         whenReady(connector.getFinancialData(testRequest).failed) { exception =>
           exception mustBe an[UpstreamErrorResponse]
-          exception.asInstanceOf[UpstreamErrorResponse].statusCode mustBe UNPROCESSABLE_ENTITY
+          val upstreamError = exception.asInstanceOf[UpstreamErrorResponse]
+          upstreamError.statusCode mustBe UNPROCESSABLE_ENTITY
+          upstreamError.message must include("returned 422")
+          verifyPost(path)
+        }
+      }
+
+      "fail with UpstreamErrorResponse on 422 Unprocessable Entity with unparseable body" in new SetUp {
+        stubPost(path, UNPROCESSABLE_ENTITY, "invalid json")
+
+        whenReady(connector.getFinancialData(testRequest).failed) { exception =>
+          exception mustBe an[UpstreamErrorResponse]
+          val upstreamError = exception.asInstanceOf[UpstreamErrorResponse]
+          upstreamError.statusCode mustBe UNPROCESSABLE_ENTITY
+          upstreamError.message must include("returned 422")
           verifyPost(path)
         }
       }
