@@ -56,6 +56,10 @@ class FinancialDataConnector @Inject()(
       .setHeader("Content-Type" -> "application/json")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
+      .recoverWith { case e: Exception =>
+        logger.warn(s"Error calling financial data API: ${e.getMessage}", e)
+        Future.failed(e)
+      }
       .flatMap { response =>
         response.status match {
           case CREATED =>

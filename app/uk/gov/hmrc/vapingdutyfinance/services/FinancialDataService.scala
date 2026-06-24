@@ -56,10 +56,6 @@ class FinancialDataService @Inject()(
 
       connector.getFinancialData(request)
         .map(response => transformToOutstandingPayments(response))
-        .recoverWith { case ex =>
-          logger.warn(s"Error calling financial data API for vpdId=$vpdId: ${ex.getMessage}", ex)
-          Future.failed(ex)
-        }
     }
   }
 
