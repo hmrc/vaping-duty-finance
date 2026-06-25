@@ -17,18 +17,19 @@
 package uk.gov.hmrc.vapingdutyfinance.controllers.actions
 
 import play.api.mvc.*
+import uk.gov.hmrc.vapingdutyfinance.base.TestData
 import uk.gov.hmrc.vapingdutyfinance.models.requests.IdentifierRequest
 
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
-class FakeAuthorisedAction @Inject()(bodyParsers: PlayBodyParsers) extends AuthorisedAction {
+class FakeAuthorisedAction @Inject()(bodyParsers: PlayBodyParsers) extends AuthorisedAction with TestData {
 
   override def parser: BodyParser[AnyContent] = bodyParsers.defaultBodyParser
 
   override def invokeBlock[A](request: Request[A], block: IdentifierRequest[A] => Future[Result]): Future[Result] =
     block(
-      IdentifierRequest(request, "vpdId", "userId")
+      IdentifierRequest(request, testVpdId, testUserId)
     )
 
   override protected def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global

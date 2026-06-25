@@ -18,11 +18,43 @@ package uk.gov.hmrc.vapingdutyfinance.config
 
 import javax.inject.{Inject, Singleton}
 import play.api.Configuration
+import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 @Singleton
-class AppConfig @Inject()(config: Configuration) {
+class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig) {
 
   val appName: String = config.get[String]("appName")
   val enrolmentServiceName: String = config.get[String]("enrolment.serviceName")
   val enrolmentIdentifierKey: String = config.get[String]("enrolment.identifierKey")
+
+  // Financial Data API Configuration
+  private val financialDataServiceName = "financial-data"
+  val financialDataBaseUrl: String = servicesConfig.baseUrl(financialDataServiceName)
+  val financialDataEndpoint = "/RESTAdapter/cross-regime/taxpayer/financial-data/query"
+  val useStaticFinancialData: Boolean = config.get[Boolean]("microservice.services.financial-data.use-static-data")
+  
+  def financialDataUrl: String = s"$financialDataBaseUrl$financialDataEndpoint"
+
+  // VPD Constants
+  val taxRegimeVpd = "VPD"
+  val idTypeVpd = "ZVPD"
+  val originatingSystemVpd = "MDTP-VPD"
+  val transmittingSystem = "HIP"
+  
+  // Date Range Configuration
+  val defaultDateRangeMonths: Int = 12
+  
+  // Selection Criteria Defaults
+  val dateTypePosting = "POSTING"
+  val includeClearedItemsDefault = true
+  val includeStatisticalItemsDefault = false
+  val includePaymentOnAccountDefault = false
+  
+  // Data Enrichment Defaults
+  val addRegimeTotalisationDefault = true
+  val addLockInformationDefault = false
+  val addPenaltyDetailsDefault = true
+  val addPostedInterestDetailsDefault = false
+  val addAccruingInterestDetailsDefault = true
+  
 }

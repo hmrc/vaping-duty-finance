@@ -19,6 +19,7 @@ package uk.gov.hmrc.vapingdutyfinance
 import play.api.{Configuration, Environment}
 import play.api.inject.{Binding, Module => AppModule}
 import uk.gov.hmrc.vapingdutyfinance.controllers.actions.{AuthorisedAction, BaseAuthorisedAction}
+import uk.gov.hmrc.vapingdutyfinance.utils.{RandomUUIDGenerator, UUIDGenerator}
 
 import java.time.Clock
 
@@ -30,5 +31,6 @@ class Module extends AppModule {
                        ): Seq[Binding[_]] =
         bind[Clock].toInstance(Clock.systemDefaultZone) ::
         bind[AuthorisedAction].to(classOf[BaseAuthorisedAction]) ::
+        bind[UUIDGenerator].to(classOf[RandomUUIDGenerator]) ::
         Nil
 }
