@@ -18,7 +18,7 @@ package uk.gov.hmrc.vapingdutyfinance.connectors
 
 import play.api.http.Status.*
 import play.api.libs.json.Json
-import uk.gov.hmrc.http.{BadRequestException, NotFoundException, UpstreamErrorResponse}
+import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.vapingdutyfinance.base.{ConnectorTestHelpers, SpecBase}
 import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
@@ -79,11 +79,19 @@ class FinancialDataConnectorISpec extends SpecBase with ConnectorTestHelpers {
           lineItemDetails = None))))
       )))
 
-  val testErrorResponse: FinancialDataErrorResponse = FinancialDataErrorResponse(
+  val testNoDataErrorResponse: FinancialDataErrorResponse = FinancialDataErrorResponse(
     errors = FinancialDataError(
       processingDate = Instant.parse("2026-10-01T10:15:10Z"),
       code = "018",
-      text = "No data found"
+      text = "No Data Identified"
+    )
+  )
+
+  val testBusinessErrorResponse: FinancialDataErrorResponse = FinancialDataErrorResponse(
+    errors = FinancialDataError(
+      processingDate = Instant.parse("2026-10-01T10:15:10Z"),
+      code = "003",
+      text = "Request could not be processed"
     )
   )
 
@@ -97,14 +105,23 @@ class FinancialDataConnectorISpec extends SpecBase with ConnectorTestHelpers {
         }
       }
 
-      "fail with UpstreamErrorResponse on 422 Unprocessable Entity with valid error body" in new SetUp {
-        stubPost(path, UNPROCESSABLE_ENTITY, Json.toJson(testErrorResponse).toString())
+      "return an empty success response on 422 Unprocessable Entity with error code 018 (No Data Identified)" in new SetUp {
+        stubPost(path, UNPROCESSABLE_ENTITY, Json.toJson(testNoDataErrorResponse).toString())
+
+        whenReady(connector.getFinancialData(testRequest)) { result =>
+          result.success.financialData mustBe None
+          verifyPost(path)
+        }
+      }
+
+      "fail with UpstreamErrorResponse on 422 Unprocessable Entity with a business error code other than 018" in new SetUp {
+        stubPost(path, UNPROCESSABLE_ENTITY, Json.toJson(testBusinessErrorResponse).toString())
 
         whenReady(connector.getFinancialData(testRequest).failed) { exception =>
           exception mustBe an[UpstreamErrorResponse]
           val upstreamError = exception.asInstanceOf[UpstreamErrorResponse]
           upstreamError.statusCode mustBe UNPROCESSABLE_ENTITY
-          upstreamError.message must include("returned 422")
+          upstreamError.message must include("003")
           verifyPost(path)
         }
       }
@@ -116,7 +133,7 @@ class FinancialDataConnectorISpec extends SpecBase with ConnectorTestHelpers {
           exception mustBe an[UpstreamErrorResponse]
           val upstreamError = exception.asInstanceOf[UpstreamErrorResponse]
           upstreamError.statusCode mustBe UNPROCESSABLE_ENTITY
-          upstreamError.message must include("returned 422")
+          upstreamError.message must include("Unexpected response from financial data API")
           verifyPost(path)
         }
       }
@@ -146,8 +163,8 @@ class FinancialDataConnectorISpec extends SpecBase with ConnectorTestHelpers {
         stubPost(path, BAD_REQUEST, """{"error": "bad request"}""")
 
         whenReady(connector.getFinancialData(testRequest).failed) { exception =>
-          exception mustBe an[BadRequestException]
-          exception.asInstanceOf[BadRequestException].responseCode mustBe BAD_REQUEST
+          exception mustBe an[UpstreamErrorResponse]
+          exception.asInstanceOf[UpstreamErrorResponse].statusCode mustBe BAD_REQUEST
           verifyPost(path)
         }
       }
@@ -176,8 +193,8 @@ class FinancialDataConnectorISpec extends SpecBase with ConnectorTestHelpers {
         stubPost(path, NOT_FOUND, "")
 
         whenReady(connector.getFinancialData(testRequest).failed) { exception =>
-          exception mustBe an[NotFoundException]
-          exception.asInstanceOf[NotFoundException].responseCode mustBe NOT_FOUND
+          exception mustBe an[UpstreamErrorResponse]
+          exception.asInstanceOf[UpstreamErrorResponse].statusCode mustBe NOT_FOUND
           verifyPost(path)
         }
       }
@@ -205,7 +222,7 @@ class FinancialDataConnectorISpec extends SpecBase with ConnectorTestHelpers {
         stubPost(path, BAD_REQUEST, "")
 
         whenReady(connectorWithRetry.getFinancialData(testRequest).failed) { exception =>
-          exception mustBe an[BadRequestException]
+          exception mustBe an[UpstreamErrorResponse]
           verifyPostWithoutRetry(path)
         }
       }

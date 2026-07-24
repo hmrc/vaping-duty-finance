@@ -20,6 +20,8 @@ import javax.inject.{Inject, Singleton}
 import play.api.Configuration
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
+import java.time.LocalDate
+
 @Singleton
 class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig) {
 
@@ -31,7 +33,6 @@ class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig)
   private val financialDataServiceName = "financial-data"
   val financialDataBaseUrl: String = servicesConfig.baseUrl(financialDataServiceName)
   val financialDataEndpoint = "/RESTAdapter/cross-regime/taxpayer/financial-data/query"
-  val useStaticFinancialData: Boolean = config.get[Boolean]("microservice.services.financial-data.use-static-data")
   
   def financialDataUrl: String = s"$financialDataBaseUrl$financialDataEndpoint"
 
@@ -42,7 +43,9 @@ class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig)
   val transmittingSystem = "HIP"
   
   // Date Range Configuration
-  val defaultDateRangeMonths: Int = 12
+  // VPD service go-live date - there is no financial data before this, so it's used as the
+  // default start of the query date range rather than a rolling look-back window.
+  val financialDataStartDate: LocalDate = LocalDate.of(2026, 10, 1)
   
   // Selection Criteria Defaults
   val dateTypePosting = "POSTING"

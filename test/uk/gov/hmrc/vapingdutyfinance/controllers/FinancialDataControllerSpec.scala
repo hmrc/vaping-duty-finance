@@ -23,7 +23,7 @@ import play.api.libs.json.Json
 import play.api.test.FakeRequest
 import play.api.test.Helpers.*
 import uk.gov.hmrc.vapingdutyfinance.base.SpecBase
-import uk.gov.hmrc.vapingdutyfinance.models.{OutstandingPayment, PaymentStatus}
+import uk.gov.hmrc.vapingdutyfinance.models.{ClearedPayment, OutstandingPayment, PaymentStatus, PaymentsResponse, UnallocatedPayment}
 import uk.gov.hmrc.vapingdutyfinance.services.FinancialDataService
 
 import scala.concurrent.Future
@@ -39,63 +39,71 @@ class FinancialDataControllerSpec extends SpecBase {
   )
 
   val testOutstandingPayment: OutstandingPayment = OutstandingPayment(chargeReference = "XP001286394838", period = "2026-10-01 to 2026-12-31", amountDue = BigDecimal("100.0"), dueDate = "2026-10-01", status = PaymentStatus.Due)
+  val testUnallocatedPayment: UnallocatedPayment = UnallocatedPayment(paymentReference = "187346702500", amount = BigDecimal("50.0"), paymentDate = "2026-10-01")
+  val testClearedPayment: ClearedPayment = ClearedPayment(chargeReference = "XP001286394839", period = "2026-10-01 to 2026-12-31", amountPaid = BigDecimal("100.0"), clearedDate = "2026-10-05")
+
+  val testPaymentsResponse: PaymentsResponse = PaymentsResponse(
+    outstanding = Seq(testOutstandingPayment),
+    unallocated = Seq(testUnallocatedPayment),
+    cleared = Seq(testClearedPayment)
+  )
 
   "FinancialDataController" - {
-    "getOutstandingPayments must" - {
-      "return 200 OK with outstanding payments when service returns success" in {
-        when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(using any()))
-          .thenReturn(Future.successful(Seq(testOutstandingPayment)))
+    "getPayments must" - {
+      "return 200 OK with all three payment sections when service returns success" in {
+        when(mockService.getPayments(eqTo(testVpdId), any(), any())(using any()))
+          .thenReturn(Future.successful(testPaymentsResponse))
 
-        val request = FakeRequest(GET, routes.FinancialDataController.getOutstandingPayments(None, None).url)
-        val result = controller.getOutstandingPayments(None, None)(request)
+        val request = FakeRequest(GET, routes.FinancialDataController.getPayments(None, None).url)
+        val result = controller.getPayments(None, None)(request)
 
         status(result) mustBe Status.OK
-        contentAsJson(result) mustBe Json.toJson(Seq(testOutstandingPayment))
+        contentAsJson(result) mustBe Json.toJson(testPaymentsResponse)
       }
 
-      "return 200 OK with empty list when no outstanding payments exist" in {
-        when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(using any()))
-          .thenReturn(Future.successful(Seq.empty))
+      "return 200 OK with empty sections when no payments exist" in {
+        when(mockService.getPayments(eqTo(testVpdId), any(), any())(using any()))
+          .thenReturn(Future.successful(PaymentsResponse.empty))
 
-        val request = FakeRequest(GET, routes.FinancialDataController.getOutstandingPayments(None, None).url)
-        val result = controller.getOutstandingPayments(None, None)(request)
+        val request = FakeRequest(GET, routes.FinancialDataController.getPayments(None, None).url)
+        val result = controller.getPayments(None, None)(request)
 
         status(result) mustBe Status.OK
-        contentAsJson(result) mustBe Json.toJson(Seq.empty[OutstandingPayment])
+        contentAsJson(result) mustBe Json.toJson(PaymentsResponse.empty)
       }
 
       "return 200 OK when valid date parameters are provided" in {
-        when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(using any()))
-          .thenReturn(Future.successful(Seq(testOutstandingPayment)))
+        when(mockService.getPayments(eqTo(testVpdId), any(), any())(using any()))
+          .thenReturn(Future.successful(testPaymentsResponse))
 
         val request =
-          FakeRequest(GET, routes.FinancialDataController.getOutstandingPayments(Some("2024-01-01"), Some("2024-12-31")).url)
+          FakeRequest(GET, routes.FinancialDataController.getPayments(Some("2024-01-01"), Some("2024-12-31")).url)
 
-        val result = controller.getOutstandingPayments(Some("2024-01-01"), Some("2024-12-31"))(request)
+        val result = controller.getPayments(Some("2024-01-01"), Some("2024-12-31"))(request)
 
         status(result) mustBe Status.OK
-        contentAsJson(result) mustBe Json.toJson(Seq(testOutstandingPayment))
+        contentAsJson(result) mustBe Json.toJson(testPaymentsResponse)
       }
 
       "return 500 Internal Server Error when service fails" in {
-        when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(using any()))
+        when(mockService.getPayments(eqTo(testVpdId), any(), any())(using any()))
           .thenReturn(Future.failed(new RuntimeException("Service error")))
 
-        val request = FakeRequest(GET, routes.FinancialDataController.getOutstandingPayments(None, None).url)
-        val result = controller.getOutstandingPayments(None, None)(request)
+        val request = FakeRequest(GET, routes.FinancialDataController.getPayments(None, None).url)
+        val result = controller.getPayments(None, None)(request)
 
         status(result) mustBe Status.INTERNAL_SERVER_ERROR
         (contentAsJson(result) \ "error").as[String] mustBe "An error occurred while retrieving financial data"
       }
 
       "handle invalid date format gracefully" in {
-        when(mockService.getOutstandingPayments(eqTo(testVpdId), any(), any())(using any()))
-          .thenReturn(Future.successful(Seq(testOutstandingPayment)))
+        when(mockService.getPayments(eqTo(testVpdId), any(), any())(using any()))
+          .thenReturn(Future.successful(testPaymentsResponse))
 
         val request =
-          FakeRequest(GET, routes.FinancialDataController.getOutstandingPayments(Some("invalid-date"), Some("2024-12-31")).url)
+          FakeRequest(GET, routes.FinancialDataController.getPayments(Some("invalid-date"), Some("2024-12-31")).url)
 
-        val result = controller.getOutstandingPayments(Some("invalid-date"), Some("2024-12-31"))(request)
+        val result = controller.getPayments(Some("invalid-date"), Some("2024-12-31"))(request)
 
         status(result) mustBe Status.OK
       }

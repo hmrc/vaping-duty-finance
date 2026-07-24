@@ -20,7 +20,7 @@ import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
 import uk.gov.hmrc.vapingdutyfinance.connectors.FinancialDataConnector
-import uk.gov.hmrc.vapingdutyfinance.models.{OutstandingPayment, PaymentStatus}
+import uk.gov.hmrc.vapingdutyfinance.models.{ClearedPayment, OutstandingPayment, PaymentStatus, PaymentsResponse, UnallocatedPayment}
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
 
 import java.time.format.DateTimeFormatter
@@ -37,27 +37,26 @@ class FinancialDataService @Inject()(
 
   private val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
 
-  def getOutstandingPayments(
-                              vpdId: String,
-                              dateFrom: Option[LocalDate],
-                              dateTo: Option[LocalDate]
-                            )(using HeaderCarrier): Future[Seq[OutstandingPayment]] = {
+  // Overpayment/payment-on-account transaction code (matches Alcohol Duty's use of the same
+  // code for its "Overpayment" transaction type) - only code relevant to VPD for now.
 
-    if (appConfig.useStaticFinancialData) {
-      logger.info(s"Using static financial data for vpdId=$vpdId")
-      Future.successful(getStaticOutstandingPayments)
-    } else {
-      val effectiveDateFrom = dateFrom.getOrElse(
-        LocalDate.now(clock).minusMonths(appConfig.defaultDateRangeMonths.toLong)
-      )
+  //TODO case object for future codes ?
+  private val unallocatedMainTransaction = "0060"
+
+  def getPayments(
+                   vpdId: String,
+                   dateFrom: Option[LocalDate],
+                   dateTo: Option[LocalDate]
+                 )(using HeaderCarrier): Future[PaymentsResponse] = {
+    
+      val effectiveDateFrom = dateFrom.getOrElse(appConfig.financialDataStartDate)
       val effectiveDateTo = dateTo.getOrElse(LocalDate.now(clock))
 
       val request = buildRequest(vpdId, effectiveDateFrom, effectiveDateTo)
 
       connector.getFinancialData(request)
-        .map(response => transformToOutstandingPayments(response))
+        .map(response => transformToPayments(response))
     }
-  }
 
   private def buildRequest(
                             vpdId: String,
@@ -90,28 +89,54 @@ class FinancialDataService @Inject()(
     )
   }
 
-  private def transformToOutstandingPayments(response: FinancialDataResponse): Seq[OutstandingPayment] = {
-    val payments = response.success.financialData
-      .flatMap(_.documentDetails)
-      .getOrElse(Seq.empty)
-      .flatMap { doc =>
-        doc.lineItemDetails.getOrElse(Seq.empty).map { lineItem =>
-          val period = formatPeriod(lineItem.periodFromDate, lineItem.periodToDate)
-          val dueDate = lineItem.netDueDate.map(_.format(dateFormatter)).getOrElse("Unknown")
-          val status = determineStatus(lineItem.netDueDate)
+  private def transformToPayments(response: FinancialDataResponse): PaymentsResponse = {
+    val documents = response.success.financialData.flatMap(_.documentDetails).getOrElse(Seq.empty)
 
-          OutstandingPayment(
-            chargeReference = doc.chargeReferenceNumber.getOrElse("Unknown"),
-            period = period,
-            amountDue = doc.documentOutstandingAmount.getOrElse(BigDecimal(0)),
-            dueDate = dueDate,
-            status = status
-          )
-        }
-      }
-    
-    applyZeroCheck(payments)
+    val (unallocatedDocs, allocatedDocs) = documents.partition(isUnallocatedDocument)
+
+    val outstanding = allocatedDocs
+      .filter(_.documentOutstandingAmount.exists(_ > 0))
+      .flatMap(toOutstandingPayments)
+
+    val cleared = allocatedDocs
+      .filter(_.documentClearedAmount.exists(_ > 0))
+      .flatMap(toClearedPayments)
+
+    val unallocated = unallocatedDocs.map(toUnallocatedPayment)
+
+    PaymentsResponse(outstanding = outstanding, unallocated = unallocated, cleared = cleared)
   }
+
+  private def isUnallocatedDocument(doc: DocumentDetails): Boolean =
+    doc.lineItemDetails.getOrElse(Seq.empty).exists(_.mainTransaction.contains(unallocatedMainTransaction))
+
+  private def toOutstandingPayments(doc: DocumentDetails): Seq[OutstandingPayment] =
+    doc.lineItemDetails.getOrElse(Seq.empty).map { lineItem =>
+      OutstandingPayment(
+        chargeReference = doc.chargeReferenceNumber.getOrElse("Unknown"),
+        period = formatPeriod(lineItem.periodFromDate, lineItem.periodToDate),
+        amountDue = doc.documentOutstandingAmount.getOrElse(BigDecimal(0)),
+        dueDate = lineItem.netDueDate.map(_.format(dateFormatter)).getOrElse("Unknown"),
+        status = determineStatus(lineItem.netDueDate)
+      )
+    }
+
+  private def toClearedPayments(doc: DocumentDetails): Seq[ClearedPayment] =
+    doc.lineItemDetails.getOrElse(Seq.empty).map { lineItem =>
+      ClearedPayment(
+        chargeReference = doc.chargeReferenceNumber.getOrElse("Unknown"),
+        period = formatPeriod(lineItem.periodFromDate, lineItem.periodToDate),
+        amountPaid = doc.documentClearedAmount.getOrElse(BigDecimal(0)),
+        clearedDate = lineItem.clearingDate.map(_.format(dateFormatter)).getOrElse("Unknown")
+      )
+    }
+
+  private def toUnallocatedPayment(doc: DocumentDetails): UnallocatedPayment =
+    UnallocatedPayment(
+      paymentReference = doc.documentNumber.getOrElse("Unknown"),
+      amount = doc.documentTotalAmount.getOrElse(BigDecimal(0)).abs,
+      paymentDate = doc.postingDate.map(_.format(dateFormatter)).getOrElse("Unknown")
+    )
 
   private def formatPeriod(fromDate: Option[LocalDate], toDate: Option[LocalDate]): String = {
     (fromDate, toDate) match {
@@ -130,43 +155,4 @@ class FinancialDataService @Inject()(
     }
   }
 
-  private def applyZeroCheck(payments: Seq[OutstandingPayment]): Seq[OutstandingPayment] = {
-    if (payments.forall(_.amountDue == BigDecimal(0))) {
-      Seq(OutstandingPayment(
-        chargeReference = "",
-        period = "",
-        amountDue = BigDecimal(0),
-        dueDate = "",
-        status = PaymentStatus.NothingToPay
-      ))
-    } else {
-      payments
-    }
-  }
-
-  private def getStaticOutstandingPayments: Seq[OutstandingPayment] = {
-    Seq(
-      OutstandingPayment(
-        chargeReference = "XM002610011594",
-        period = "2024-01-01 to 2024-01-31",
-        amountDue = BigDecimal("1250.50"),
-        dueDate = "2024-02-15",
-        status = PaymentStatus.Overdue
-      ),
-      OutstandingPayment(
-        chargeReference = "XM002610011595",
-        period = "2024-02-01 to 2024-02-29",
-        amountDue = BigDecimal("2500.00"),
-        dueDate = LocalDate.now(clock).plusDays(5).format(dateFormatter),
-        status = PaymentStatus.Due
-      ),
-      OutstandingPayment(
-        chargeReference = "XM002610011596",
-        period = "2024-03-01 to 2024-03-31",
-        amountDue = BigDecimal("750.25"),
-        dueDate = LocalDate.now(clock).plusDays(15).format(dateFormatter),
-        status = PaymentStatus.Due
-      )
-    )
-  }
 }
