@@ -95,13 +95,13 @@ class FinancialDataService @Inject()(
       .filter(_.documentOutstandingAmount.exists(_ > 0))
       .flatMap(toOutstandingPayments)
 
-    val cleared = allocatedDocs
-      .filter(_.documentClearedAmount.exists(_ > 0))
-      .flatMap(toClearedPayments)
+//    val cleared = allocatedDocs
+//      .filter(_.documentClearedAmount.exists(_ > 0))
+//      .flatMap(toClearedPayments)
+//
+//    val unallocated = unallocatedDocs.map(toUnallocatedPayment)
 
-    val unallocated = unallocatedDocs.map(toUnallocatedPayment)
-
-    PaymentsResponse(outstanding = outstanding, unallocated = unallocated, cleared = cleared)
+    PaymentsResponse(outstanding = outstanding, unallocated = Seq.empty, cleared = Seq.empty)
   }
 
   private def lineItems(doc: DocumentDetails): Seq[LineItemDetails] =
@@ -121,22 +121,22 @@ class FinancialDataService @Inject()(
       )
     }
 
-  private def toClearedPayments(doc: DocumentDetails): Seq[ClearedPayment] =
-    lineItems(doc).map { lineItem =>
-      ClearedPayment(
-        chargeReference = doc.chargeReferenceNumber.getOrElse("Unknown"),
-        period = formatPeriod(lineItem.periodFromDate, lineItem.periodToDate),
-        amountPaid = doc.documentClearedAmount.getOrElse(BigDecimal(0)),
-        clearedDate = lineItem.clearingDate.map(_.format(dateFormatter)).getOrElse("Unknown")
-      )
-    }
-
-  private def toUnallocatedPayment(doc: DocumentDetails): UnallocatedPayment =
-    UnallocatedPayment(
-      paymentReference = doc.documentNumber.getOrElse("Unknown"),
-      amount = doc.documentTotalAmount.getOrElse(BigDecimal(0)).abs,
-      paymentDate = doc.postingDate.map(_.format(dateFormatter)).getOrElse("Unknown")
-    )
+//  private def toClearedPayments(doc: DocumentDetails): Seq[ClearedPayment] =
+//    lineItems(doc).map { lineItem =>
+//      ClearedPayment(
+//        chargeReference = doc.chargeReferenceNumber.getOrElse("Unknown"),
+//        period = formatPeriod(lineItem.periodFromDate, lineItem.periodToDate),
+//        amountPaid = doc.documentClearedAmount.getOrElse(BigDecimal(0)),
+//        clearedDate = lineItem.clearingDate.map(_.format(dateFormatter)).getOrElse("Unknown")
+//      )
+//    }
+//
+//  private def toUnallocatedPayment(doc: DocumentDetails): UnallocatedPayment =
+//    UnallocatedPayment(
+//      paymentReference = doc.documentNumber.getOrElse("Unknown"),
+//      amount = doc.documentTotalAmount.getOrElse(BigDecimal(0)).abs,
+//      paymentDate = doc.postingDate.map(_.format(dateFormatter)).getOrElse("Unknown")
+//    )
 
   private def formatPeriod(fromDate: Option[LocalDate], toDate: Option[LocalDate]): String = {
     (fromDate, toDate) match {

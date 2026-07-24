@@ -50,45 +50,45 @@ class FinancialDataServiceSpec extends SpecBase {
         }
       }
 
-      "return cleared payments for documents with a cleared amount" in {
-        val response = testResponse.copy(
-          success = testResponse.success.copy(
-            financialData = Some(FinancialData(totalisation = None, documentDetails = Some(Seq(testDocWithCleared))))
-          )
-        )
-        when(mockConnector.getFinancialData(any())(using any()))
-          .thenReturn(Future.successful(response))
+//      "return cleared payments for documents with a cleared amount" in {
+//        val response = testResponse.copy(
+//          success = testResponse.success.copy(
+//            financialData = Some(FinancialData(totalisation = None, documentDetails = Some(Seq(testDocWithCleared))))
+//          )
+//        )
+//        when(mockConnector.getFinancialData(any())(using any()))
+//          .thenReturn(Future.successful(response))
+//
+//        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+//          result.outstanding mustBe empty
+//          result.unallocated mustBe empty
+//          result.cleared must not be empty
+//          result.cleared.head.chargeReference mustBe "XP001286394839"
+//          result.cleared.head.amountPaid mustBe BigDecimal("100.0")
+//          result.cleared.head.clearedDate mustBe "2026-10-05"
+//        }
+//      }
+//
+//      "return unallocated payments for documents with main transaction 0060" in {
+//        val response = testResponse.copy(
+//          success = testResponse.success.copy(
+//            financialData = Some(FinancialData(totalisation = None, documentDetails = Some(Seq(testDocUnallocated))))
+//          )
+//        )
+//        when(mockConnector.getFinancialData(any())(using any()))
+//          .thenReturn(Future.successful(response))
+//
+//        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+//          result.outstanding mustBe empty
+//          result.cleared mustBe empty
+//          result.unallocated must not be empty
+//          result.unallocated.head.paymentReference mustBe "187346702500"
+//          result.unallocated.head.amount mustBe BigDecimal("50.0")
+//          result.unallocated.head.paymentDate mustBe "2026-10-01"
+//        }
+//      }
 
-        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.outstanding mustBe empty
-          result.unallocated mustBe empty
-          result.cleared must not be empty
-          result.cleared.head.chargeReference mustBe "XP001286394839"
-          result.cleared.head.amountPaid mustBe BigDecimal("100.0")
-          result.cleared.head.clearedDate mustBe "2026-10-05"
-        }
-      }
-
-      "return unallocated payments for documents with main transaction 0060" in {
-        val response = testResponse.copy(
-          success = testResponse.success.copy(
-            financialData = Some(FinancialData(totalisation = None, documentDetails = Some(Seq(testDocUnallocated))))
-          )
-        )
-        when(mockConnector.getFinancialData(any())(using any()))
-          .thenReturn(Future.successful(response))
-
-        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.outstanding mustBe empty
-          result.cleared mustBe empty
-          result.unallocated must not be empty
-          result.unallocated.head.paymentReference mustBe "187346702500"
-          result.unallocated.head.amount mustBe BigDecimal("50.0")
-          result.unallocated.head.paymentDate mustBe "2026-10-01"
-        }
-      }
-
-      "classify a mix of outstanding, unallocated and cleared documents independently" in {
+      "return only outstanding payments when a mix of outstanding, unallocated and cleared documents are present" in {
         val response = testResponse.copy(
           success = testResponse.success.copy(
             financialData = Some(FinancialData(
@@ -102,8 +102,8 @@ class FinancialDataServiceSpec extends SpecBase {
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
           result.outstanding.size mustBe 1
-          result.cleared.size mustBe 1
-          result.unallocated.size mustBe 1
+          result.cleared mustBe empty
+          result.unallocated mustBe empty
         }
       }
 
@@ -126,7 +126,7 @@ class FinancialDataServiceSpec extends SpecBase {
         }
       }
 
-      "classify a document as both outstanding and cleared when it has a partial payment" in {
+      "return the outstanding amount for a document with a partial payment" in {
         val docWithPartialPayment = testDocWithOutstanding.copy(
           documentOutstandingAmount = Some(BigDecimal("40.0")),
           documentClearedAmount = Some(BigDecimal("60.0")),
@@ -147,8 +147,7 @@ class FinancialDataServiceSpec extends SpecBase {
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
           result.outstanding must not be empty
           result.outstanding.head.amountDue mustBe BigDecimal("40.0")
-          result.cleared must not be empty
-          result.cleared.head.amountPaid mustBe BigDecimal("60.0")
+          result.cleared mustBe empty
           result.unallocated mustBe empty
         }
       }
