@@ -22,7 +22,6 @@ import org.mockito.Mockito.{atLeastOnce, verify, when}
 import play.api.http.Status.INTERNAL_SERVER_ERROR
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.vapingdutyfinance.base.SpecBase
-import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
 import uk.gov.hmrc.vapingdutyfinance.connectors.FinancialDataConnector
 import uk.gov.hmrc.vapingdutyfinance.models.PaymentStatus
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
@@ -35,76 +34,6 @@ class FinancialDataServiceSpec extends SpecBase {
   val mockConnector: FinancialDataConnector = mock[FinancialDataConnector]
 
   val service = FinancialDataService(mockConnector, appConfig, clock)
-
-  val testDocWithOutstanding: DocumentDetails = DocumentDetails(
-    documentNumber = Some("187346702498"),
-    documentType = Some("TRM New Charge"),
-    chargeReferenceNumber = Some("XP001286394838"),
-    businessPartnerNumber = Some("100893731"),
-    contractAccountNumber = Some("900726630"),
-    contractAccountCategory = Some("Excise"),
-    contractObjectNumber = Some("104920928302302"),
-    contractObjectType = Some("ZVPD"),
-    postingDate = Some(LocalDate.of(2026, 10, 1)),
-    issueDate = Some(LocalDate.of(2026, 10, 1)),
-    documentTotalAmount = Some(BigDecimal("100.0")),
-    documentClearedAmount = Some(BigDecimal("0.0")),
-    documentOutstandingAmount = Some(BigDecimal("100.0")),
-    documentInterestTotals = None,
-    documentPenaltyTotals = None,
-    lineItemDetails = Some(Seq(LineItemDetails(
-      itemNumber = Some("0001"),
-      subItemNumber = Some("003"),
-      mainTransaction = Some("4060"),
-      subTransaction = Some("3392"),
-      chargeDescription = Some("VPD Return"),
-      periodFromDate = Some(LocalDate.of(2026, 10, 1)),
-      periodToDate = Some(LocalDate.of(2026, 12, 31)),
-      periodKey = Some("26KJ"),
-      netDueDate = Some(LocalDate.of(2026, 10, 1)),
-      formBundleNumber = Some("125435934761"),
-      statisticalKey = Some("1"),
-      amount = Some(BigDecimal("3420.0")),
-      clearingDate = None,
-      clearingReason = None,
-      clearingDocument = None,
-      outgoingPaymentMethod = Some("B"),
-      ddCollectionInProgress = Some(true)
-    )))
-  )
-
-  val testDocWithCleared: DocumentDetails = testDocWithOutstanding.copy(
-    documentNumber = Some("187346702499"),
-    chargeReferenceNumber = Some("XP001286394839"),
-    documentClearedAmount = Some(BigDecimal("100.0")),
-    documentOutstandingAmount = Some(BigDecimal("0.0")),
-    lineItemDetails = Some(Seq(
-      testDocWithOutstanding.lineItemDetails.get.head.copy(
-        clearingDate = Some(LocalDate.of(2026, 10, 5))
-      )
-    ))
-  )
-
-  val testDocUnallocated: DocumentDetails = testDocWithOutstanding.copy(
-    documentNumber = Some("187346702500"),
-    chargeReferenceNumber = None,
-    documentTotalAmount = Some(BigDecimal("50.0")),
-    documentOutstandingAmount = None,
-    documentClearedAmount = None,
-    lineItemDetails = Some(Seq(
-      testDocWithOutstanding.lineItemDetails.get.head.copy(mainTransaction = Some("0060"))
-    ))
-  )
-
-  val testResponse: FinancialDataResponse = FinancialDataResponse(
-    success = FinancialDataSuccess(
-      processingDate = Instant.parse("2026-10-01T10:15:10Z"),
-      financialData = Some(FinancialData(
-        totalisation = None,
-        documentDetails = Some(Seq(testDocWithOutstanding))
-      ))
-    )
-  )
 
   "FinancialDataService" - {
     "getPayments must" - {
@@ -175,6 +104,52 @@ class FinancialDataServiceSpec extends SpecBase {
           result.outstanding.size mustBe 1
           result.cleared.size mustBe 1
           result.unallocated.size mustBe 1
+        }
+      }
+
+      "drop a document with an outstanding/cleared amount but no line items" in {
+        val docWithNoLineItems = testDocWithOutstanding.copy(lineItemDetails = None)
+
+        val response = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = Some(FinancialData(totalisation = None, documentDetails = Some(Seq(docWithNoLineItems))))
+          )
+        )
+
+        when(mockConnector.getFinancialData(any())(using any()))
+          .thenReturn(Future.successful(response))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding mustBe empty
+          result.unallocated mustBe empty
+          result.cleared mustBe empty
+        }
+      }
+
+      "classify a document as both outstanding and cleared when it has a partial payment" in {
+        val docWithPartialPayment = testDocWithOutstanding.copy(
+          documentOutstandingAmount = Some(BigDecimal("40.0")),
+          documentClearedAmount = Some(BigDecimal("60.0")),
+          lineItemDetails = Some(Seq(
+            testDocWithOutstanding.lineItemDetails.get.head.copy(clearingDate = Some(LocalDate.of(2026, 10, 5)))
+          ))
+        )
+
+        val response = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = Some(FinancialData(totalisation = None, documentDetails = Some(Seq(docWithPartialPayment))))
+          )
+        )
+
+        when(mockConnector.getFinancialData(any())(using any()))
+          .thenReturn(Future.successful(response))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding must not be empty
+          result.outstanding.head.amountDue mustBe BigDecimal("40.0")
+          result.cleared must not be empty
+          result.cleared.head.amountPaid mustBe BigDecimal("60.0")
+          result.unallocated mustBe empty
         }
       }
 

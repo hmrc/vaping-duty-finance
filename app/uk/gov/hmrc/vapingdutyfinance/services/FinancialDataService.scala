@@ -39,8 +39,6 @@ class FinancialDataService @Inject()(
 
   // Overpayment/payment-on-account transaction code (matches Alcohol Duty's use of the same
   // code for its "Overpayment" transaction type) - only code relevant to VPD for now.
-
-  //TODO case object for future codes ?
   private val unallocatedMainTransaction = "0060"
 
   def getPayments(
@@ -48,15 +46,14 @@ class FinancialDataService @Inject()(
                    dateFrom: Option[LocalDate],
                    dateTo: Option[LocalDate]
                  )(using HeaderCarrier): Future[PaymentsResponse] = {
-    
-      val effectiveDateFrom = dateFrom.getOrElse(appConfig.financialDataStartDate)
-      val effectiveDateTo = dateTo.getOrElse(LocalDate.now(clock))
+    val effectiveDateFrom = dateFrom.getOrElse(appConfig.financialDataStartDate)
+    val effectiveDateTo = dateTo.getOrElse(LocalDate.now(clock))
 
-      val request = buildRequest(vpdId, effectiveDateFrom, effectiveDateTo)
+    val request = buildRequest(vpdId, effectiveDateFrom, effectiveDateTo)
 
-      connector.getFinancialData(request)
-        .map(response => transformToPayments(response))
-    }
+    connector.getFinancialData(request)
+      .map(response => transformToPayments(response))
+  }
 
   private def buildRequest(
                             vpdId: String,
@@ -107,11 +104,14 @@ class FinancialDataService @Inject()(
     PaymentsResponse(outstanding = outstanding, unallocated = unallocated, cleared = cleared)
   }
 
+  private def lineItems(doc: DocumentDetails): Seq[LineItemDetails] =
+    doc.lineItemDetails.getOrElse(Seq.empty)
+
   private def isUnallocatedDocument(doc: DocumentDetails): Boolean =
-    doc.lineItemDetails.getOrElse(Seq.empty).exists(_.mainTransaction.contains(unallocatedMainTransaction))
+    lineItems(doc).exists(_.mainTransaction.contains(unallocatedMainTransaction))
 
   private def toOutstandingPayments(doc: DocumentDetails): Seq[OutstandingPayment] =
-    doc.lineItemDetails.getOrElse(Seq.empty).map { lineItem =>
+    lineItems(doc).map { lineItem =>
       OutstandingPayment(
         chargeReference = doc.chargeReferenceNumber.getOrElse("Unknown"),
         period = formatPeriod(lineItem.periodFromDate, lineItem.periodToDate),
@@ -122,7 +122,7 @@ class FinancialDataService @Inject()(
     }
 
   private def toClearedPayments(doc: DocumentDetails): Seq[ClearedPayment] =
-    doc.lineItemDetails.getOrElse(Seq.empty).map { lineItem =>
+    lineItems(doc).map { lineItem =>
       ClearedPayment(
         chargeReference = doc.chargeReferenceNumber.getOrElse("Unknown"),
         period = formatPeriod(lineItem.periodFromDate, lineItem.periodToDate),

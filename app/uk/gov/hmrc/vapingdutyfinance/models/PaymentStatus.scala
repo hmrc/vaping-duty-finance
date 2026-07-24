@@ -19,7 +19,7 @@ package uk.gov.hmrc.vapingdutyfinance.models
 import play.api.libs.json.{Format, JsError, JsResult, JsString, JsSuccess, JsValue}
 
 enum PaymentStatus:
-  case Due, Overdue, NothingToPay
+  case Due, Overdue
 
 object PaymentStatus:
   given format: Format[PaymentStatus] = new Format[PaymentStatus] {
@@ -27,7 +27,6 @@ object PaymentStatus:
       json.validate[String].flatMap {
         case "Due"          => JsSuccess(PaymentStatus.Due)
         case "Overdue"      => JsSuccess(PaymentStatus.Overdue)
-        case "NothingToPay" => JsSuccess(PaymentStatus.NothingToPay)
         case other          => JsError(s"Unknown PaymentStatus: $other")
       }
 
