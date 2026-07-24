@@ -45,7 +45,7 @@ class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig)
   // Date Range Configuration
   // VPD service go-live date - there is no financial data before this, so it's used as the
   // default start of the query date range rather than a rolling look-back window.
-  val financialDataStartDate: LocalDate = LocalDate.of(2026, 10, 1)
+  val financialDataStartDate: LocalDate = LocalDate.parse(config.get[String]("financialData.startDate"))
   
   // Selection Criteria Defaults
   val dateTypePosting = "POSTING"
