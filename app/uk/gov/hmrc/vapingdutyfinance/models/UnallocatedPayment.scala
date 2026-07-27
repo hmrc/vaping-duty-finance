@@ -18,10 +18,12 @@ package uk.gov.hmrc.vapingdutyfinance.models
 
 import play.api.libs.json.{Json, OFormat}
 
+import java.time.LocalDate
+
 final case class UnallocatedPayment(
-                                     paymentReference: String,
+                                     paymentReference: Option[String],
                                      amount: BigDecimal,
-                                     paymentDate: String
+                                     paymentDate: Option[LocalDate]
                                    )
 
 object UnallocatedPayment {

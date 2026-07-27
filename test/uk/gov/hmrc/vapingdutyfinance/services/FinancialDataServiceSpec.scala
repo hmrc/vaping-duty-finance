@@ -43,7 +43,7 @@ class FinancialDataServiceSpec extends SpecBase {
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
           result.outstanding must not be empty
-          result.outstanding.head.chargeReference mustBe "XP001286394838"
+          result.outstanding.head.chargeReference mustBe Some("XP001286394838")
           result.outstanding.head.amountDue mustBe BigDecimal("100.0")
           result.unallocated mustBe empty
           result.cleared mustBe empty
@@ -350,84 +350,5 @@ class FinancialDataServiceSpec extends SpecBase {
       }
     }
 
-    "formatPeriod must" - {
-      "format period with only from date" in {
-        val docWithOnlyFromDate = testDocWithOutstanding.copy(
-          lineItemDetails = Some(Seq(
-            testDocWithOutstanding.lineItemDetails.get.head.copy(
-              periodFromDate = Some(LocalDate.of(2026, 10, 1)),
-              periodToDate = None
-            )
-          ))
-        )
-
-        val response = testResponse.copy(
-          success = testResponse.success.copy(
-            financialData = testResponse.success.financialData.map(fd =>
-              fd.copy(documentDetails = Some(Seq(docWithOnlyFromDate)))
-            )
-          )
-        )
-
-        when(mockConnector.getFinancialData(any())(using any()))
-          .thenReturn(Future.successful(response))
-
-        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.outstanding.head.period mustBe "From 2026-10-01"
-        }
-      }
-
-      "format period with only to date" in {
-        val docWithOnlyToDate = testDocWithOutstanding.copy(
-          lineItemDetails = Some(Seq(
-            testDocWithOutstanding.lineItemDetails.get.head.copy(
-              periodFromDate = None,
-              periodToDate = Some(LocalDate.of(2026, 12, 31))
-            )
-          ))
-        )
-
-        val response = testResponse.copy(
-          success = testResponse.success.copy(
-            financialData = testResponse.success.financialData.map(fd =>
-              fd.copy(documentDetails = Some(Seq(docWithOnlyToDate)))
-            )
-          )
-        )
-
-        when(mockConnector.getFinancialData(any())(using any()))
-          .thenReturn(Future.successful(response))
-
-        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.outstanding.head.period mustBe "To 2026-12-31"
-        }
-      }
-
-      "format period with no dates" in {
-        val docWithNoDates = testDocWithOutstanding.copy(
-          lineItemDetails = Some(Seq(
-            testDocWithOutstanding.lineItemDetails.get.head.copy(
-              periodFromDate = None,
-              periodToDate = None
-            )
-          ))
-        )
-
-        val response = testResponse.copy(
-          success = testResponse.success.copy(
-            financialData = testResponse.success.financialData.map(fd =>
-              fd.copy(documentDetails = Some(Seq(docWithNoDates)))
-            )
-          )
-        )
-
-        when(mockConnector.getFinancialData(any())(using any()))
-          .thenReturn(Future.successful(response))
-
-        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.outstanding.head.period mustBe "Unknown period"
-        }
-      }
-    }
   }
 }

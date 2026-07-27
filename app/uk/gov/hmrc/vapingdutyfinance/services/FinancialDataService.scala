@@ -23,7 +23,6 @@ import uk.gov.hmrc.vapingdutyfinance.connectors.FinancialDataConnector
 import uk.gov.hmrc.vapingdutyfinance.models.{ClearedPayment, OutstandingPayment, PaymentStatus, PaymentsResponse, UnallocatedPayment}
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
 
-import java.time.format.DateTimeFormatter
 import java.time.{Clock, LocalDate}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -34,8 +33,6 @@ class FinancialDataService @Inject()(
                                       appConfig: AppConfig,
                                       clock: Clock
                                     )(using ExecutionContext) extends Logging {
-
-  private val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
 
   // Overpayment/payment-on-account transaction code (matches Alcohol Duty's use of the same
   // code for its "Overpayment" transaction type) - only code relevant to VPD for now.
@@ -113,10 +110,11 @@ class FinancialDataService @Inject()(
   private def toOutstandingPayments(doc: DocumentDetails): Seq[OutstandingPayment] =
     lineItems(doc).map { lineItem =>
       OutstandingPayment(
-        chargeReference = doc.chargeReferenceNumber.getOrElse("Unknown"),
-        period = formatPeriod(lineItem.periodFromDate, lineItem.periodToDate),
+        chargeReference = doc.chargeReferenceNumber,
+        periodFromDate = lineItem.periodFromDate,
+        periodToDate = lineItem.periodToDate,
         amountDue = doc.documentOutstandingAmount.getOrElse(BigDecimal(0)),
-        dueDate = lineItem.netDueDate.map(_.format(dateFormatter)).getOrElse("Unknown"),
+        dueDate = lineItem.netDueDate,
         status = determineStatus(lineItem.netDueDate)
       )
     }
@@ -124,28 +122,20 @@ class FinancialDataService @Inject()(
 //  private def toClearedPayments(doc: DocumentDetails): Seq[ClearedPayment] =
 //    lineItems(doc).map { lineItem =>
 //      ClearedPayment(
-//        chargeReference = doc.chargeReferenceNumber.getOrElse("Unknown"),
-//        period = formatPeriod(lineItem.periodFromDate, lineItem.periodToDate),
+//        chargeReference = doc.chargeReferenceNumber,
+//        periodFromDate = lineItem.periodFromDate,
+//        periodToDate = lineItem.periodToDate,
 //        amountPaid = doc.documentClearedAmount.getOrElse(BigDecimal(0)),
-//        clearedDate = lineItem.clearingDate.map(_.format(dateFormatter)).getOrElse("Unknown")
+//        clearedDate = lineItem.clearingDate
 //      )
 //    }
 //
 //  private def toUnallocatedPayment(doc: DocumentDetails): UnallocatedPayment =
 //    UnallocatedPayment(
-//      paymentReference = doc.documentNumber.getOrElse("Unknown"),
+//      paymentReference = doc.documentNumber,
 //      amount = doc.documentTotalAmount.getOrElse(BigDecimal(0)).abs,
-//      paymentDate = doc.postingDate.map(_.format(dateFormatter)).getOrElse("Unknown")
+//      paymentDate = doc.postingDate
 //    )
-
-  private def formatPeriod(fromDate: Option[LocalDate], toDate: Option[LocalDate]): String = {
-    (fromDate, toDate) match {
-      case (Some(from), Some(to)) => s"${from.format(dateFormatter)} to ${to.format(dateFormatter)}"
-      case (Some(from), None) => s"From ${from.format(dateFormatter)}"
-      case (None, Some(to)) => s"To ${to.format(dateFormatter)}"
-      case _ => "Unknown period"
-    }
-  }
 
   private def determineStatus(netDueDate: Option[LocalDate]): PaymentStatus = {
     netDueDate match {

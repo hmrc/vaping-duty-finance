@@ -101,9 +101,28 @@ trait TestData {
     )
   )
 
-  val testOutstandingPayment: OutstandingPayment = OutstandingPayment(chargeReference = "XP001286394838", period = "2026-10-01 to 2026-12-31", amountDue = BigDecimal("100.0"), dueDate = "2026-10-01", status = PaymentStatus.Due)
-  val testUnallocatedPayment: UnallocatedPayment = UnallocatedPayment(paymentReference = "187346702500", amount = BigDecimal("50.0"), paymentDate = "2026-10-01")
-  val testClearedPayment: ClearedPayment = ClearedPayment(chargeReference = "XP001286394839", period = "2026-10-01 to 2026-12-31", amountPaid = BigDecimal("100.0"), clearedDate = "2026-10-05")
+  val testOutstandingPayment: OutstandingPayment = OutstandingPayment(
+    chargeReference = Some("XP001286394838"),
+    periodFromDate = Some(LocalDate.of(2026, 10, 1)),
+    periodToDate = Some(LocalDate.of(2026, 12, 31)),
+    amountDue = BigDecimal("100.0"),
+    dueDate = Some(LocalDate.of(2026, 10, 1)),
+    status = PaymentStatus.Due
+  )
+  
+  val testUnallocatedPayment: UnallocatedPayment = UnallocatedPayment(
+    paymentReference = Some("187346702500"),
+    amount = BigDecimal("50.0"),
+    paymentDate = Some(LocalDate.of(2026, 10, 1))
+  )
+  
+  val testClearedPayment: ClearedPayment = ClearedPayment(
+    chargeReference = Some("XP001286394839"),
+    periodFromDate = Some(LocalDate.of(2026, 10, 1)),
+    periodToDate = Some(LocalDate.of(2026, 12, 31)),
+    amountPaid = BigDecimal("100.0"),
+    clearedDate = Some(LocalDate.of(2026, 10, 5))
+  )
 
   val testPaymentsResponse: PaymentsResponse = PaymentsResponse(
     outstanding = Seq(testOutstandingPayment),
