@@ -348,6 +348,102 @@ class FinancialDataServiceSpec extends SpecBase {
           result.outstanding.size mustBe 2
         }
       }
+
+      "treat payment on account with VPD contract object as unallocated" in {
+        val response = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = Some(FinancialData(
+              totalisation = None,
+              documentDetails = Some(Seq(testDocUnallocated))
+            ))
+          )
+        )
+
+        when(mockConnector.getFinancialData(any())(using any()))
+          .thenReturn(Future.successful(response))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding mustBe empty
+          result.cleared mustBe empty
+          result.unallocated mustBe empty
+        }
+      }
+
+      "not treat payment on account with non-VPD contract object as unallocated" in {
+        val nonVpdDoc = testDocUnallocated.copy(
+          contractObjectType = Some("ZADP")
+        )
+
+        val response = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = Some(FinancialData(
+              totalisation = None,
+              documentDetails = Some(Seq(nonVpdDoc))
+            ))
+          )
+        )
+
+        when(mockConnector.getFinancialData(any())(using any()))
+          .thenReturn(Future.successful(response))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding mustBe empty
+          result.cleared mustBe empty
+          result.unallocated mustBe empty
+        }
+      }
+
+      "not treat payment on account with missing contract object as unallocated" in {
+        val noContractObjectDoc = testDocUnallocated.copy(
+          contractObjectType = None
+        )
+
+        val response = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = Some(FinancialData(
+              totalisation = None,
+              documentDetails = Some(Seq(noContractObjectDoc))
+            ))
+          )
+        )
+
+        when(mockConnector.getFinancialData(any())(using any()))
+          .thenReturn(Future.successful(response))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding mustBe empty
+          result.cleared mustBe empty
+          result.unallocated mustBe empty
+        }
+      }
+
+      "not treat non-payment-on-account with VPD contract object as unallocated" in {
+        val nonPaymentOnAccountDoc = testDocWithOutstanding.copy(
+          lineItemDetails = Some(Seq(
+            testDocWithOutstanding.lineItemDetails.get.head.copy(
+              mainTransaction = Some("4060")
+            )
+          ))
+        )
+
+        val response = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = Some(FinancialData(
+              totalisation = None,
+              documentDetails = Some(Seq(nonPaymentOnAccountDoc))
+            ))
+          )
+        )
+
+        when(mockConnector.getFinancialData(any())(using any()))
+          .thenReturn(Future.successful(response))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding must not be empty
+          result.cleared mustBe empty
+          result.unallocated mustBe empty
+        }
+      }
     }
 
   }

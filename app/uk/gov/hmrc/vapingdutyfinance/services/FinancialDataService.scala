@@ -37,6 +37,7 @@ class FinancialDataService @Inject()(
   // Overpayment/payment-on-account transaction code (matches Alcohol Duty's use of the same
   // code for its "Overpayment" transaction type) - only code relevant to VPD for now.
   private val unallocatedMainTransaction = "0060"
+  private val vpdContractObjectType = "ZVPD"
 
   def getPayments(
                    vpdId: String,
@@ -105,7 +106,8 @@ class FinancialDataService @Inject()(
     doc.lineItemDetails.getOrElse(Seq.empty)
 
   private def isUnallocatedDocument(doc: DocumentDetails): Boolean =
-    lineItems(doc).exists(_.mainTransaction.contains(unallocatedMainTransaction))
+    lineItems(doc).exists(_.mainTransaction.contains(unallocatedMainTransaction)) &&
+    doc.contractObjectType.contains(vpdContractObjectType)
 
   private def toOutstandingPayments(doc: DocumentDetails): Seq[OutstandingPayment] =
     lineItems(doc).map { lineItem =>
