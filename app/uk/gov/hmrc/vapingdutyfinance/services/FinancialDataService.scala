@@ -34,11 +34,6 @@ class FinancialDataService @Inject()(
                                       clock: Clock
                                     )(using ExecutionContext) extends Logging {
 
-  // Overpayment/payment-on-account transaction code (matches Alcohol Duty's use of the same
-  // code for its "Overpayment" transaction type) - only code relevant to VPD for now.
-  private val paymentOnAccountCode = MainTransactionType.PaymentOnAccount.code
-  private val vpdContractObjectType = "ZVPD"
-
   def getPayments(
                    vpdId: String,
                    dateFrom: Option[LocalDate],
@@ -81,9 +76,14 @@ class FinancialDataService @Inject()(
   private def lineItems(doc: DocumentDetails): Seq[LineItemDetails] =
     doc.lineItemDetails.getOrElse(Seq.empty)
 
+  private def isPaymentOnAccount(lineItem: LineItemDetails): Boolean =
+    lineItem.mainTransaction.contains(MainTransactionType.PaymentOnAccount.code)
+
+  private def isVpdRegime(doc: DocumentDetails): Boolean =
+    doc.contractObjectType.contains("ZVPD")
+
   private def isPaymentOnAccountDocument(doc: DocumentDetails): Boolean =
-    lineItems(doc).exists(_.mainTransaction.contains(paymentOnAccountCode)) &&
-    doc.contractObjectType.contains(vpdContractObjectType)
+    lineItems(doc).exists(isPaymentOnAccount) && isVpdRegime(doc)
 
   private def toOutstandingPayments(doc: DocumentDetails): Seq[OutstandingPayment] =
     lineItems(doc).map { lineItem =>
