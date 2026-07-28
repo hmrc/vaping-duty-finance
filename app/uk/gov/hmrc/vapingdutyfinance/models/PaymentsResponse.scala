@@ -17,15 +17,17 @@
 package uk.gov.hmrc.vapingdutyfinance.models
 
 import play.api.libs.json.{Json, OFormat}
+import uk.gov.hmrc.vapingdutyfinance.models.financialdata.Totalisation
 
 final case class PaymentsResponse(
                                    outstanding: Seq[OutstandingPayment],
                                    paymentOnAccount: Seq[PaymentOnAccountMainTransaction],
-                                   cleared: Seq[ClearedPayment]
+                                   cleared: Seq[ClearedPayment],
+                                   totalisation: Totalisation
                                  )
 
 object PaymentsResponse {
-  val empty: PaymentsResponse = PaymentsResponse(Seq.empty, Seq.empty, Seq.empty)
+  val empty: PaymentsResponse = PaymentsResponse(Seq.empty, Seq.empty, Seq.empty, Totalisation(None))
 
   given format: OFormat[PaymentsResponse] = Json.format[PaymentsResponse]
 }

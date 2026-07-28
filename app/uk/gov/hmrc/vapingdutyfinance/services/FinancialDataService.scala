@@ -86,6 +86,9 @@ class FinancialDataService @Inject()(
 
   private def transformToPayments(response: FinancialDataResponse): PaymentsResponse = {
     val documents = response.success.financialData.flatMap(_.documentDetails).getOrElse(Seq.empty)
+    val totalisation = response.success.financialData
+      .flatMap(_.totalisation)
+      .getOrElse(Totalisation(None))
 
     val (paymentOnAccountDocs, outstandingAndCleared) = documents.partition(isPaymentOnAccountDocument)
 
@@ -99,7 +102,12 @@ class FinancialDataService @Inject()(
 //
 //    val paymentOnAccount = paymentOnAccountDocs.map(toPaymentOnAccountMainTransaction)
 
-    PaymentsResponse(outstanding = outstanding, paymentOnAccount = Seq.empty, cleared = Seq.empty)
+    PaymentsResponse(
+      outstanding = outstanding,
+      paymentOnAccount = Seq.empty,
+      cleared = Seq.empty,
+      totalisation = totalisation
+    )
   }
 
   private def lineItems(doc: DocumentDetails): Seq[LineItemDetails] =
