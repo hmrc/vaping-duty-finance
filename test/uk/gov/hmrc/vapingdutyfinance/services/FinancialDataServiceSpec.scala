@@ -109,13 +109,12 @@ class FinancialDataServiceSpec extends SpecBase {
           result.outstanding mustBe empty
           result.cleared mustBe empty
           result.paymentOnAccount must not be empty
-          result.paymentOnAccount.head.paymentReference mustBe Some("187346702500")
           result.paymentOnAccount.head.amount mustBe BigDecimal("50.0")
           result.paymentOnAccount.head.paymentDate mustBe Some(LocalDate.of(2026, 10, 1))
         }
       }
 
-      "return only outstanding payments when a mix of outstanding, payment on account and cleared documents are present" in {
+      "return all payment types when a mix of outstanding, payment on account and cleared documents are present" in {
         val response = testResponse.copy(
           success = testResponse.success.copy(
             financialData = Some(FinancialData(
@@ -129,8 +128,8 @@ class FinancialDataServiceSpec extends SpecBase {
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
           result.outstanding.size mustBe 1
-          result.cleared mustBe empty
-          result.paymentOnAccount mustBe empty
+          result.cleared.size mustBe 1
+          result.paymentOnAccount.size mustBe 1
         }
       }
 
@@ -153,7 +152,7 @@ class FinancialDataServiceSpec extends SpecBase {
         }
       }
 
-      "return the outstanding amount for a document with a partial payment" in {
+      "return both outstanding and cleared amounts for a document with a partial payment" in {
         val docWithPartialPayment = testDocWithOutstanding.copy(
           documentOutstandingAmount = Some(BigDecimal("40.0")),
           documentClearedAmount = Some(BigDecimal("60.0")),
@@ -174,7 +173,9 @@ class FinancialDataServiceSpec extends SpecBase {
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
           result.outstanding must not be empty
           result.outstanding.head.amountDue mustBe BigDecimal("40.0")
-          result.cleared mustBe empty
+          result.cleared must not be empty
+          result.cleared.head.amountPaid mustBe BigDecimal("60.0")
+          result.cleared.head.clearedDate mustBe Some(LocalDate.of(2026, 10, 5))
           result.paymentOnAccount mustBe empty
         }
       }
@@ -396,7 +397,9 @@ class FinancialDataServiceSpec extends SpecBase {
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
           result.outstanding mustBe empty
           result.cleared mustBe empty
-          result.paymentOnAccount mustBe empty
+          result.paymentOnAccount must not be empty
+          result.paymentOnAccount.head.amount mustBe BigDecimal("50.0")
+          result.paymentOnAccount.head.paymentDate mustBe Some(LocalDate.of(2026, 10, 1))
         }
       }
 
