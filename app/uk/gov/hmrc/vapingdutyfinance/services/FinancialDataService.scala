@@ -87,13 +87,13 @@ class FinancialDataService @Inject()(
   private def transformToPayments(response: FinancialDataResponse): PaymentsResponse = {
     val documents = response.success.financialData.flatMap(_.documentDetails).getOrElse(Seq.empty)
 
-    val (paymentOnAccountDocs, allocatedDocs) = documents.partition(isPaymentOnAccountDocument)
+    val (paymentOnAccountDocs, outstandingAndCleared) = documents.partition(isPaymentOnAccountDocument)
 
-    val outstanding = allocatedDocs
+    val outstanding = outstandingAndCleared
       .filter(_.documentOutstandingAmount.exists(_ > 0))
       .flatMap(toOutstandingPayments)
 
-//    val cleared = allocatedDocs
+//    val cleared = outstandingAndCleared
 //      .filter(_.documentClearedAmount.exists(_ > 0))
 //      .flatMap(toClearedPayments)
 //
