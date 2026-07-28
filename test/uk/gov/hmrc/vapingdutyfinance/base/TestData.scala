@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.vapingdutyfinance.base
 
-import uk.gov.hmrc.vapingdutyfinance.models.{ClearedPayment, OutstandingPayment, PaymentOnAccountMainTransaction, PaymentStatus, PaymentsResponse}
+import uk.gov.hmrc.vapingdutyfinance.models.{ClearedPayment, OutstandingPayment, PaymentOnAccount, PaymentStatus, PaymentsResponse}
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.{DocumentDetails, FinancialData, FinancialDataResponse, FinancialDataSuccess, LineItemDetails, RegimeTotalisation, Totalisation}
 
 import java.time.{Clock, Instant, LocalDate, ZoneId}
@@ -29,10 +29,10 @@ trait TestData {
   val testCorrelationId = "f0bD1f32-de51-45cc-9B18-0520d6e3ab1a"
 
   val sampleRegimeTotalisation: RegimeTotalisation = RegimeTotalisation(
-    totalAccountOverdue = BigDecimal("100.0"),
-    totalAccountNotYetDue = BigDecimal("200.0"),
-    totalAccountCredit = BigDecimal("0.0"),
-    totalAccountBalance = BigDecimal("300.0")
+    totalAccountOverdue = Some(BigDecimal("100.0")),
+    totalAccountNotYetDue = Some(BigDecimal("200.0")),
+    totalAccountCredit = Some(BigDecimal("0.0")),
+    totalAccountBalance = Some(BigDecimal("300.0"))
   )
 
   val sampleTotalisation: Totalisation = Totalisation(
@@ -119,7 +119,7 @@ trait TestData {
     status = PaymentStatus.Due
   )
   
-  val testPaymentOnAccountMainTransaction: PaymentOnAccountMainTransaction = PaymentOnAccountMainTransaction(
+  val testPaymentOnAccount: PaymentOnAccount = PaymentOnAccount(
     paymentReference = Some("187346702500"),
     amount = BigDecimal("50.0"),
     paymentDate = Some(LocalDate.of(2026, 10, 1))
@@ -135,8 +135,8 @@ trait TestData {
 
   val testPaymentsResponse: PaymentsResponse = PaymentsResponse(
     outstanding = Seq(testOutstandingPayment),
-    paymentOnAccount = Seq(testPaymentOnAccountMainTransaction),
+    paymentOnAccount = Seq(testPaymentOnAccount),
     cleared = Seq(testClearedPayment),
-    totalisation = sampleTotalisation
+    totalAccountBalance = sampleRegimeTotalisation.totalAccountBalance
   )
 }

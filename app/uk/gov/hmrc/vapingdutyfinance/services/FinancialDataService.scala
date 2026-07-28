@@ -20,8 +20,8 @@ import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
 import uk.gov.hmrc.vapingdutyfinance.connectors.FinancialDataConnector
-import uk.gov.hmrc.vapingdutyfinance.models.{ClearedPayment, MainTransactionType, OutstandingPayment, PaymentOnAccountMainTransaction, PaymentStatus, PaymentsResponse}
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
+import uk.gov.hmrc.vapingdutyfinance.models.{MainTransactionType, OutstandingPayment, PaymentStatus, PaymentsResponse}
 
 import java.time.{Clock, LocalDate}
 import javax.inject.{Inject, Singleton}
@@ -53,9 +53,10 @@ class FinancialDataService @Inject()(
 
   private def transformToPayments(response: FinancialDataResponse): PaymentsResponse = {
     val documents = response.success.financialData.flatMap(_.documentDetails).getOrElse(Seq.empty)
-    val totalisation = response.success.financialData
+    val totalAccountBalance = response.success.financialData
       .flatMap(_.totalisation)
-      .getOrElse(Totalisation(None))
+      .flatMap(_.regimeTotalisation)
+      .flatMap(_.totalAccountBalance)
 
     val (paymentOnAccountDocs, outstandingAndCleared) = documents.partition(isPaymentOnAccountDocument)
 
@@ -73,7 +74,7 @@ class FinancialDataService @Inject()(
       outstanding = outstanding,
       paymentOnAccount = Seq.empty,
       cleared = Seq.empty,
-      totalisation = totalisation
+      totalAccountBalance = totalAccountBalance
     )
   }
 

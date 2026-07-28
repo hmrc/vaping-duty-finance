@@ -20,12 +20,12 @@ import play.api.libs.json.{Json, OFormat}
 
 import java.time.LocalDate
 
-final case class PaymentOnAccountMainTransaction(
+final case class PaymentOnAccount(
                                      paymentReference: Option[String],
                                      amount: BigDecimal,
                                      paymentDate: Option[LocalDate]
                                    )
 
-object PaymentOnAccountMainTransaction {
-  given format: OFormat[PaymentOnAccountMainTransaction] = Json.format[PaymentOnAccountMainTransaction]
+object PaymentOnAccount {
+  given format: OFormat[PaymentOnAccount] = Json.format[PaymentOnAccount]
 }

@@ -47,7 +47,7 @@ class FinancialDataServiceSpec extends SpecBase {
           result.outstanding.head.amountDue mustBe BigDecimal("100.0")
           result.paymentOnAccount mustBe empty
           result.cleared mustBe empty
-          result.totalisation mustBe sampleTotalisation
+          result.totalAccountBalance mustBe Some(BigDecimal("300.0"))
         }
       }
 
@@ -56,12 +56,7 @@ class FinancialDataServiceSpec extends SpecBase {
           .thenReturn(Future.successful(testResponse))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.totalisation mustBe sampleTotalisation
-          result.totalisation.regimeTotalisation mustBe Some(sampleRegimeTotalisation)
-          result.totalisation.regimeTotalisation.get.totalAccountOverdue mustBe BigDecimal("100.0")
-          result.totalisation.regimeTotalisation.get.totalAccountNotYetDue mustBe BigDecimal("200.0")
-          result.totalisation.regimeTotalisation.get.totalAccountCredit mustBe BigDecimal("0.0")
-          result.totalisation.regimeTotalisation.get.totalAccountBalance mustBe BigDecimal("300.0")
+          result.totalAccountBalance mustBe Some(BigDecimal("300.0"))
         }
       }
 
@@ -78,8 +73,7 @@ class FinancialDataServiceSpec extends SpecBase {
           .thenReturn(Future.successful(responseWithoutTotalisation))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.totalisation mustBe Totalisation(None)
-          result.totalisation.regimeTotalisation mustBe None
+          result.totalAccountBalance mustBe None
         }
       }
 

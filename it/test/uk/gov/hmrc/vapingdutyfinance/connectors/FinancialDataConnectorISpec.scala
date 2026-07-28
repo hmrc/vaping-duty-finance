@@ -36,12 +36,12 @@ class FinancialDataConnectorISpec extends SpecBase with ConnectorTestHelpers {
       financialData = Some(FinancialData(
         totalisation = Some(Totalisation(
           regimeTotalisation = Some(RegimeTotalisation(
-            totalAccountOverdue = BigDecimal("1000.0"),
-            totalAccountNotYetDue = BigDecimal("250.0"),
-            totalAccountCredit = BigDecimal("0.0"),
-            totalAccountBalance = BigDecimal("1250.0"))
+            totalAccountOverdue = Some(BigDecimal("1000.0")),
+            totalAccountNotYetDue = Some(BigDecimal("250.0")),
+            totalAccountCredit = Some(BigDecimal("0.0")),
+            totalAccountBalance = Some(BigDecimal("1250.0"))
           ))
-        ),
+        )),
         documentDetails = Some(Seq(DocumentDetails(
           documentNumber = Some("187346702498"),
           documentType = Some("TRM New Charge"),

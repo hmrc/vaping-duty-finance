@@ -19,10 +19,10 @@ package uk.gov.hmrc.vapingdutyfinance.models.financialdata
 import play.api.libs.json.{Json, OFormat}
 
 final case class RegimeTotalisation(
-  totalAccountOverdue: BigDecimal,
-  totalAccountNotYetDue: BigDecimal,
-  totalAccountCredit: BigDecimal,
-  totalAccountBalance: BigDecimal
+  totalAccountOverdue: Option[BigDecimal],
+  totalAccountNotYetDue: Option[BigDecimal],
+  totalAccountCredit: Option[BigDecimal],
+  totalAccountBalance: Option[BigDecimal]
 )
 
 object RegimeTotalisation {
