@@ -77,43 +77,43 @@ class FinancialDataServiceSpec extends SpecBase {
         }
       }
 
-//      "return cleared payments for documents with a cleared amount" in {
-//        val response = testResponse.copy(
-//          success = testResponse.success.copy(
-//            financialData = Some(FinancialData(totalisation = None, documentDetails = Some(Seq(testDocWithCleared))))
-//          )
-//        )
-//        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
-//          .thenReturn(Future.successful(response))
-//
-//        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-//          result.outstanding mustBe empty
-//          result.paymentOnAccount mustBe empty
-//          result.cleared must not be empty
-//          result.cleared.head.chargeReference mustBe Some("XP001286394839")
-//          result.cleared.head.amountPaid mustBe BigDecimal("100.0")
-//          result.cleared.head.clearedDate mustBe Some(LocalDate.of(2026, 10, 5))
-//        }
-//      }
-//
-//      "return payment on account payments for documents with main transaction 0060" in {
-//        val response = testResponse.copy(
-//          success = testResponse.success.copy(
-//            financialData = Some(FinancialData(totalisation = None, documentDetails = Some(Seq(testDocUnallocated))))
-//          )
-//        )
-//        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
-//          .thenReturn(Future.successful(response))
-//
-//        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-//          result.outstanding mustBe empty
-//          result.cleared mustBe empty
-//          result.paymentOnAccount must not be empty
-//          result.paymentOnAccount.head.paymentReference mustBe Some("187346702500")
-//          result.paymentOnAccount.head.amount mustBe BigDecimal("50.0")
-//          result.paymentOnAccount.head.paymentDate mustBe Some(LocalDate.of(2026, 10, 1))
-//        }
-//      }
+      "return cleared payments for documents with a cleared amount" in {
+        val response = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = Some(FinancialData(totalisation = None, documentDetails = Some(Seq(testDocWithCleared))))
+          )
+        )
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(response))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding mustBe empty
+          result.paymentOnAccount mustBe empty
+          result.cleared must not be empty
+          result.cleared.head.chargeReference mustBe Some("XP001286394839")
+          result.cleared.head.amountPaid mustBe BigDecimal("100.0")
+          result.cleared.head.clearedDate mustBe Some(LocalDate.of(2026, 10, 5))
+        }
+      }
+
+      "return payment on account payments for documents with main transaction 0060" in {
+        val response = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = Some(FinancialData(totalisation = None, documentDetails = Some(Seq(testDocUnallocated))))
+          )
+        )
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(response))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding mustBe empty
+          result.cleared mustBe empty
+          result.paymentOnAccount must not be empty
+          result.paymentOnAccount.head.paymentReference mustBe Some("187346702500")
+          result.paymentOnAccount.head.amount mustBe BigDecimal("50.0")
+          result.paymentOnAccount.head.paymentDate mustBe Some(LocalDate.of(2026, 10, 1))
+        }
+      }
 
       "return only outstanding payments when a mix of outstanding, payment on account and cleared documents are present" in {
         val response = testResponse.copy(
