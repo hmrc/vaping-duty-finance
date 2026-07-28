@@ -120,15 +120,12 @@ trait TestData {
   )
   
   val testPaymentOnAccount: PaymentOnAccount = PaymentOnAccount(
-    paymentReference = Some("187346702500"),
     amount = BigDecimal("50.0"),
     paymentDate = Some(LocalDate.of(2026, 10, 1))
   )
   
   val testClearedPayment: ClearedPayment = ClearedPayment(
     chargeReference = Some("XP001286394839"),
-    periodFromDate = Some(LocalDate.of(2026, 10, 1)),
-    periodToDate = Some(LocalDate.of(2026, 12, 31)),
     amountPaid = BigDecimal("100.0"),
     clearedDate = Some(LocalDate.of(2026, 10, 5))
   )
