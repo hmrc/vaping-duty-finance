@@ -63,7 +63,7 @@ class FinancialDataService @Inject()(
       .filter(_.documentClearedAmount.exists(_ > 0))
       .flatMap(toClearedPayments)
 
-    val paymentOnAccount = paymentOnAccountDocs.map(toPaymentOnAccountMainTransaction)
+    val paymentOnAccount = paymentOnAccountDocs.map(toPaymentOnAccount)
 
     PaymentsResponse(
       outstanding = outstanding,
@@ -104,7 +104,7 @@ class FinancialDataService @Inject()(
       )
     }
 
-  private def toPaymentOnAccountMainTransaction(doc: DocumentDetails): PaymentOnAccount =
+  private def toPaymentOnAccount(doc: DocumentDetails): PaymentOnAccount =
     PaymentOnAccount(
       amount = doc.documentTotalAmount.getOrElse(BigDecimal(0)).abs,
       paymentDate = doc.postingDate
