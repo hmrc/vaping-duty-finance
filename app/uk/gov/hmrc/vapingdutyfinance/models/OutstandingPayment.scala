@@ -22,8 +22,6 @@ import java.time.LocalDate
 
 final case class OutstandingPayment(
                                      chargeReference: Option[String],
-                                     periodFromDate: Option[LocalDate],
-                                     periodToDate: Option[LocalDate],
                                      amountDue: BigDecimal,
                                      dueDate: Option[LocalDate],
                                      status: PaymentStatus

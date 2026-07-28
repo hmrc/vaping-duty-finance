@@ -121,8 +121,6 @@ class FinancialDataService @Inject()(
     lineItems(doc).map { lineItem =>
       OutstandingPayment(
         chargeReference = doc.chargeReferenceNumber,
-        periodFromDate = lineItem.periodFromDate,
-        periodToDate = lineItem.periodToDate,
         amountDue = doc.documentOutstandingAmount.getOrElse(BigDecimal(0)),
         dueDate = lineItem.netDueDate,
         status = determineStatus(lineItem.netDueDate)
