@@ -45,7 +45,7 @@ class FinancialDataServiceSpec extends SpecBase {
           result.outstanding must not be empty
           result.outstanding.head.chargeReference mustBe Some("XP001286394838")
           result.outstanding.head.amountDue mustBe BigDecimal("100.0")
-          result.unallocated mustBe empty
+          result.paymentOnAccount mustBe empty
           result.cleared mustBe empty
         }
       }
@@ -56,39 +56,39 @@ class FinancialDataServiceSpec extends SpecBase {
 //            financialData = Some(FinancialData(totalisation = None, documentDetails = Some(Seq(testDocWithCleared))))
 //          )
 //        )
-//        when(mockConnector.getFinancialData(any())(using any()))
+//        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
 //          .thenReturn(Future.successful(response))
 //
 //        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
 //          result.outstanding mustBe empty
-//          result.unallocated mustBe empty
+//          result.paymentOnAccount mustBe empty
 //          result.cleared must not be empty
-//          result.cleared.head.chargeReference mustBe "XP001286394839"
+//          result.cleared.head.chargeReference mustBe Some("XP001286394839")
 //          result.cleared.head.amountPaid mustBe BigDecimal("100.0")
-//          result.cleared.head.clearedDate mustBe "2026-10-05"
+//          result.cleared.head.clearedDate mustBe Some(LocalDate.of(2026, 10, 5))
 //        }
 //      }
 //
-//      "return unallocated payments for documents with main transaction 0060" in {
+//      "return payment on account payments for documents with main transaction 0060" in {
 //        val response = testResponse.copy(
 //          success = testResponse.success.copy(
 //            financialData = Some(FinancialData(totalisation = None, documentDetails = Some(Seq(testDocUnallocated))))
 //          )
 //        )
-//        when(mockConnector.getFinancialData(any())(using any()))
+//        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
 //          .thenReturn(Future.successful(response))
 //
 //        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
 //          result.outstanding mustBe empty
 //          result.cleared mustBe empty
-//          result.unallocated must not be empty
-//          result.unallocated.head.paymentReference mustBe "187346702500"
-//          result.unallocated.head.amount mustBe BigDecimal("50.0")
-//          result.unallocated.head.paymentDate mustBe "2026-10-01"
+//          result.paymentOnAccount must not be empty
+//          result.paymentOnAccount.head.paymentReference mustBe Some("187346702500")
+//          result.paymentOnAccount.head.amount mustBe BigDecimal("50.0")
+//          result.paymentOnAccount.head.paymentDate mustBe Some(LocalDate.of(2026, 10, 1))
 //        }
 //      }
 
-      "return only outstanding payments when a mix of outstanding, unallocated and cleared documents are present" in {
+      "return only outstanding payments when a mix of outstanding, payment on account and cleared documents are present" in {
         val response = testResponse.copy(
           success = testResponse.success.copy(
             financialData = Some(FinancialData(
@@ -103,7 +103,7 @@ class FinancialDataServiceSpec extends SpecBase {
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
           result.outstanding.size mustBe 1
           result.cleared mustBe empty
-          result.unallocated mustBe empty
+          result.paymentOnAccount mustBe empty
         }
       }
 
@@ -121,7 +121,7 @@ class FinancialDataServiceSpec extends SpecBase {
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
           result.outstanding mustBe empty
-          result.unallocated mustBe empty
+          result.paymentOnAccount mustBe empty
           result.cleared mustBe empty
         }
       }
@@ -148,7 +148,7 @@ class FinancialDataServiceSpec extends SpecBase {
           result.outstanding must not be empty
           result.outstanding.head.amountDue mustBe BigDecimal("40.0")
           result.cleared mustBe empty
-          result.unallocated mustBe empty
+          result.paymentOnAccount mustBe empty
         }
       }
 
@@ -166,7 +166,7 @@ class FinancialDataServiceSpec extends SpecBase {
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
           result.outstanding mustBe empty
-          result.unallocated mustBe empty
+          result.paymentOnAccount mustBe empty
           result.cleared mustBe empty
         }
       }
@@ -181,7 +181,7 @@ class FinancialDataServiceSpec extends SpecBase {
 
         whenReady(service.getPayments(testVpdId, None, None)) { result =>
           result.outstanding mustBe empty
-          result.unallocated mustBe empty
+          result.paymentOnAccount mustBe empty
           result.cleared mustBe empty
         }
       }
@@ -349,7 +349,7 @@ class FinancialDataServiceSpec extends SpecBase {
         }
       }
 
-      "treat payment on account with VPD contract object as unallocated" in {
+      "treat payment on account with VPD contract object as payment on account" in {
         val response = testResponse.copy(
           success = testResponse.success.copy(
             financialData = Some(FinancialData(
@@ -365,11 +365,11 @@ class FinancialDataServiceSpec extends SpecBase {
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
           result.outstanding mustBe empty
           result.cleared mustBe empty
-          result.unallocated mustBe empty
+          result.paymentOnAccount mustBe empty
         }
       }
 
-      "not treat payment on account with non-VPD contract object as unallocated" in {
+      "not treat payment on account with non-VPD contract object as payment on account" in {
         val nonVpdDoc = testDocUnallocated.copy(
           contractObjectType = Some("ZADP")
         )
@@ -389,11 +389,11 @@ class FinancialDataServiceSpec extends SpecBase {
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
           result.outstanding mustBe empty
           result.cleared mustBe empty
-          result.unallocated mustBe empty
+          result.paymentOnAccount mustBe empty
         }
       }
 
-      "not treat payment on account with missing contract object as unallocated" in {
+      "not treat payment on account with missing contract object as payment on account" in {
         val noContractObjectDoc = testDocUnallocated.copy(
           contractObjectType = None
         )
@@ -413,11 +413,11 @@ class FinancialDataServiceSpec extends SpecBase {
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
           result.outstanding mustBe empty
           result.cleared mustBe empty
-          result.unallocated mustBe empty
+          result.paymentOnAccount mustBe empty
         }
       }
 
-      "not treat non-payment-on-account with VPD contract object as unallocated" in {
+      "not treat non-payment-on-account with VPD contract object as payment on account" in {
         val nonPaymentOnAccountDoc = testDocWithOutstanding.copy(
           lineItemDetails = Some(Seq(
             testDocWithOutstanding.lineItemDetails.get.head.copy(
@@ -441,7 +441,7 @@ class FinancialDataServiceSpec extends SpecBase {
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
           result.outstanding must not be empty
           result.cleared mustBe empty
-          result.unallocated mustBe empty
+          result.paymentOnAccount mustBe empty
         }
       }
     }

@@ -20,7 +20,7 @@ import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
 import uk.gov.hmrc.vapingdutyfinance.connectors.FinancialDataConnector
-import uk.gov.hmrc.vapingdutyfinance.models.{ClearedPayment, OutstandingPayment, PaymentStatus, PaymentsResponse, UnallocatedPayment}
+import uk.gov.hmrc.vapingdutyfinance.models.{ClearedPayment, MainTransactionType, OutstandingPayment, PaymentOnAccountMainTransaction, PaymentStatus, PaymentsResponse}
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
 
 import java.time.{Clock, LocalDate}
@@ -36,7 +36,7 @@ class FinancialDataService @Inject()(
 
   // Overpayment/payment-on-account transaction code (matches Alcohol Duty's use of the same
   // code for its "Overpayment" transaction type) - only code relevant to VPD for now.
-  private val unallocatedMainTransaction = "0060"
+  private val paymentOnAccountCode = MainTransactionType.PaymentOnAccount.code
   private val vpdContractObjectType = "ZVPD"
 
   def getPayments(
@@ -87,7 +87,7 @@ class FinancialDataService @Inject()(
   private def transformToPayments(response: FinancialDataResponse): PaymentsResponse = {
     val documents = response.success.financialData.flatMap(_.documentDetails).getOrElse(Seq.empty)
 
-    val (unallocatedDocs, allocatedDocs) = documents.partition(isUnallocatedDocument)
+    val (paymentOnAccountDocs, allocatedDocs) = documents.partition(isPaymentOnAccountDocument)
 
     val outstanding = allocatedDocs
       .filter(_.documentOutstandingAmount.exists(_ > 0))
@@ -97,16 +97,16 @@ class FinancialDataService @Inject()(
 //      .filter(_.documentClearedAmount.exists(_ > 0))
 //      .flatMap(toClearedPayments)
 //
-//    val unallocated = unallocatedDocs.map(toUnallocatedPayment)
+//    val paymentOnAccount = paymentOnAccountDocs.map(toPaymentOnAccountMainTransaction)
 
-    PaymentsResponse(outstanding = outstanding, unallocated = Seq.empty, cleared = Seq.empty)
+    PaymentsResponse(outstanding = outstanding, paymentOnAccount = Seq.empty, cleared = Seq.empty)
   }
 
   private def lineItems(doc: DocumentDetails): Seq[LineItemDetails] =
     doc.lineItemDetails.getOrElse(Seq.empty)
 
-  private def isUnallocatedDocument(doc: DocumentDetails): Boolean =
-    lineItems(doc).exists(_.mainTransaction.contains(unallocatedMainTransaction)) &&
+  private def isPaymentOnAccountDocument(doc: DocumentDetails): Boolean =
+    lineItems(doc).exists(_.mainTransaction.contains(paymentOnAccountCode)) &&
     doc.contractObjectType.contains(vpdContractObjectType)
 
   private def toOutstandingPayments(doc: DocumentDetails): Seq[OutstandingPayment] =
@@ -132,8 +132,8 @@ class FinancialDataService @Inject()(
 //      )
 //    }
 //
-//  private def toUnallocatedPayment(doc: DocumentDetails): UnallocatedPayment =
-//    UnallocatedPayment(
+//  private def toPaymentOnAccountMainTransaction(doc: DocumentDetails): PaymentOnAccountMainTransaction =
+//    PaymentOnAccountMainTransaction(
 //      paymentReference = doc.documentNumber,
 //      amount = doc.documentTotalAmount.getOrElse(BigDecimal(0)).abs,
 //      paymentDate = doc.postingDate

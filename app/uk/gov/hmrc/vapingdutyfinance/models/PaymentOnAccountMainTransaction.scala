@@ -18,14 +18,14 @@ package uk.gov.hmrc.vapingdutyfinance.models
 
 import play.api.libs.json.{Json, OFormat}
 
-final case class PaymentsResponse(
-                                   outstanding: Seq[OutstandingPayment],
-                                   paymentOnAccount: Seq[PaymentOnAccountMainTransaction],
-                                   cleared: Seq[ClearedPayment]
-                                 )
+import java.time.LocalDate
 
-object PaymentsResponse {
-  val empty: PaymentsResponse = PaymentsResponse(Seq.empty, Seq.empty, Seq.empty)
+final case class PaymentOnAccountMainTransaction(
+                                     paymentReference: Option[String],
+                                     amount: BigDecimal,
+                                     paymentDate: Option[LocalDate]
+                                   )
 
-  given format: OFormat[PaymentsResponse] = Json.format[PaymentsResponse]
+object PaymentOnAccountMainTransaction {
+  given format: OFormat[PaymentOnAccountMainTransaction] = Json.format[PaymentOnAccountMainTransaction]
 }

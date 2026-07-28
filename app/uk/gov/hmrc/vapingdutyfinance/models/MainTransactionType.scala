@@ -16,16 +16,21 @@
 
 package uk.gov.hmrc.vapingdutyfinance.models
 
-import play.api.libs.json.{Json, OFormat}
+sealed trait MainTransactionType {
+  def code: String
+  def description: String
+}
 
-import java.time.LocalDate
-
-final case class UnallocatedPayment(
-                                     paymentReference: Option[String],
-                                     amount: BigDecimal,
-                                     paymentDate: Option[LocalDate]
-                                   )
-
-object UnallocatedPayment {
-  given format: OFormat[UnallocatedPayment] = Json.format[UnallocatedPayment]
+object MainTransactionType {
+  case object PaymentOnAccount extends MainTransactionType {
+    val code = "0060"
+    val description = "Payment on Account"
+  }
+  
+  def fromCode(code: String): Option[MainTransactionType] = code match {
+    case "0060" => Some(PaymentOnAccount)
+    case _ => None
+  }
+  
+  val all: Seq[MainTransactionType] = Seq(PaymentOnAccount)
 }

@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.vapingdutyfinance.base
 
-import uk.gov.hmrc.vapingdutyfinance.models.{ClearedPayment, OutstandingPayment, PaymentStatus, PaymentsResponse, UnallocatedPayment}
+import uk.gov.hmrc.vapingdutyfinance.models.{ClearedPayment, OutstandingPayment, PaymentOnAccountMainTransaction, PaymentStatus, PaymentsResponse}
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.{DocumentDetails, FinancialData, FinancialDataResponse, FinancialDataSuccess, LineItemDetails}
 
 import java.time.{Clock, Instant, LocalDate, ZoneId}
@@ -30,7 +30,7 @@ trait TestData {
 
   // Payment fixtures shared between FinancialDataServiceSpec and FinancialDataControllerSpec.
   // testDocWithOutstanding/testDocWithCleared/testDocUnallocated are the downstream API shape,
-  // testOutstandingPayment/testClearedPayment/testUnallocatedPayment are what they transform into.
+  // testOutstandingPayment/testClearedPayment/testPaymentOnAccountMainTransaction are what they transform into.
   val testDocWithOutstanding: DocumentDetails = DocumentDetails(
     documentNumber = Some("187346702498"),
     documentType = Some("TRM New Charge"),
@@ -110,7 +110,7 @@ trait TestData {
     status = PaymentStatus.Due
   )
   
-  val testUnallocatedPayment: UnallocatedPayment = UnallocatedPayment(
+  val testPaymentOnAccountMainTransaction: PaymentOnAccountMainTransaction = PaymentOnAccountMainTransaction(
     paymentReference = Some("187346702500"),
     amount = BigDecimal("50.0"),
     paymentDate = Some(LocalDate.of(2026, 10, 1))
@@ -126,7 +126,7 @@ trait TestData {
 
   val testPaymentsResponse: PaymentsResponse = PaymentsResponse(
     outstanding = Seq(testOutstandingPayment),
-    unallocated = Seq(testUnallocatedPayment),
+    paymentOnAccount = Seq(testPaymentOnAccountMainTransaction),
     cleared = Seq(testClearedPayment)
   )
 }
