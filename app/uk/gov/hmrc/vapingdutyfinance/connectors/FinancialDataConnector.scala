@@ -23,11 +23,11 @@ import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpReadsInstances, HttpResponse, StringContextOps, UpstreamErrorResponse}
 import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
-import uk.gov.hmrc.vapingdutyfinance.models.financialdata.{FinancialDataError, FinancialDataErrorResponse, FinancialDataRequest, FinancialDataResponse, FinancialDataSuccess}
+import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
 import uk.gov.hmrc.vapingdutyfinance.utils.UUIDGenerator
 
 import java.time.format.DateTimeFormatter
-import java.time.{Clock, Instant, ZoneOffset}
+import java.time.{Clock, Instant, LocalDate, ZoneOffset}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Success, Try}
@@ -43,9 +43,37 @@ class FinancialDataConnector @Inject()(
   private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
   private val noDataIdentifiedErrorCode = "018"
 
-  def getFinancialData(request: FinancialDataRequest)
+  private def buildRequest(vpdId: String, dateFrom: LocalDate, dateTo: LocalDate): FinancialDataRequest = {
+    FinancialDataRequest(
+      taxRegime = appConfig.taxRegimeVpd,
+      taxpayerInformation = TaxpayerInformation(
+        idType = appConfig.idTypeVpd,
+        idNumber = vpdId
+      ),
+      selectionCriteria = SelectionCriteria(
+        dateRange = DateRange(
+          dateType = appConfig.dateTypePosting,
+          dateFrom = dateFrom,
+          dateTo = dateTo
+        ),
+        includeClearedItems = true,
+        includeStatisticalItems = false,
+        includePaymentOnAccount = false
+      ),
+      dataEnrichment = DataEnrichmentOptions(
+        addRegimeTotalisation = true,
+        addLockInformation = false,
+        addPenaltyDetails = true,
+        addPostedInterestDetails = false,
+        addAccruingInterestDetails = true
+      )
+    )
+  }
+
+  def getFinancialData(vpdId: String, dateFrom: LocalDate, dateTo: LocalDate)
                       (using hc: HeaderCarrier): Future[FinancialDataResponse] = {
 
+    val request = buildRequest(vpdId, dateFrom, dateTo)
     val correlationId = hc.requestId.map(_.value).getOrElse(uuidGenerator.uuid)
     val receiptDate = Instant.now(clock).atOffset(ZoneOffset.UTC).format(dateTimeFormatter)
 

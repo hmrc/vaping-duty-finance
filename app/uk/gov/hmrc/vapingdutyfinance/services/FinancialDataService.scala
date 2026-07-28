@@ -47,41 +47,8 @@ class FinancialDataService @Inject()(
     val effectiveDateFrom = dateFrom.getOrElse(appConfig.financialDataStartDate)
     val effectiveDateTo = dateTo.getOrElse(LocalDate.now(clock))
 
-    val request = buildRequest(vpdId, effectiveDateFrom, effectiveDateTo)
-
-    connector.getFinancialData(request)
+    connector.getFinancialData(vpdId, effectiveDateFrom, effectiveDateTo)
       .map(response => transformToPayments(response))
-  }
-
-  private def buildRequest(
-                            vpdId: String,
-                            dateFrom: LocalDate,
-                            dateTo: LocalDate
-                          ): FinancialDataRequest = {
-    FinancialDataRequest(
-      taxRegime = appConfig.taxRegimeVpd,
-      taxpayerInformation = TaxpayerInformation(
-        idType = appConfig.idTypeVpd,
-        idNumber = vpdId
-      ),
-      selectionCriteria = SelectionCriteria(
-        dateRange = DateRange(
-          dateType = appConfig.dateTypePosting,
-          dateFrom = dateFrom,
-          dateTo = dateTo
-        ),
-        includeClearedItems = appConfig.includeClearedItemsDefault,
-        includeStatisticalItems = appConfig.includeStatisticalItemsDefault,
-        includePaymentOnAccount = appConfig.includePaymentOnAccountDefault
-      ),
-      dataEnrichment = DataEnrichmentOptions(
-        addRegimeTotalisation = appConfig.addRegimeTotalisationDefault,
-        addLockInformation = appConfig.addLockInformationDefault,
-        addPenaltyDetails = appConfig.addPenaltyDetailsDefault,
-        addPostedInterestDetails = appConfig.addPostedInterestDetailsDefault,
-        addAccruingInterestDetails = appConfig.addAccruingInterestDetailsDefault
-      )
-    )
   }
 
   private def transformToPayments(response: FinancialDataResponse): PaymentsResponse = {

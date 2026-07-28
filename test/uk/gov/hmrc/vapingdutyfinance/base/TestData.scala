@@ -114,8 +114,6 @@ trait TestData {
 
   val testOutstandingPayment: OutstandingPayment = OutstandingPayment(
     chargeReference = Some("XP001286394838"),
-    periodFromDate = Some(LocalDate.of(2026, 10, 1)),
-    periodToDate = Some(LocalDate.of(2026, 12, 31)),
     amountDue = BigDecimal("100.0"),
     dueDate = Some(LocalDate.of(2026, 10, 1)),
     status = PaymentStatus.Due

@@ -38,7 +38,7 @@ class FinancialDataServiceSpec extends SpecBase {
   "FinancialDataService" - {
     "getPayments must" - {
       "return outstanding payments when connector returns success" in {
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(testResponse))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
@@ -130,7 +130,7 @@ class FinancialDataServiceSpec extends SpecBase {
             ))
           )
         )
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(response))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
@@ -149,7 +149,7 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(response))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
@@ -174,7 +174,7 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(response))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
@@ -194,7 +194,7 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(emptyResponse))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
@@ -209,7 +209,7 @@ class FinancialDataServiceSpec extends SpecBase {
           success = FinancialDataSuccess(processingDate = Instant.parse("2026-10-01T10:15:10Z"), financialData = None)
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(noDataResponse))
 
         whenReady(service.getPayments(testVpdId, None, None)) { result =>
@@ -220,34 +220,38 @@ class FinancialDataServiceSpec extends SpecBase {
       }
 
       "default dateFrom to the fixed VPD service start date and dateTo to today when dates not provided" in {
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(testResponse))
 
         whenReady(service.getPayments(testVpdId, None, None)) { _ =>
-          val captor = ArgumentCaptor.forClass(classOf[FinancialDataRequest])
-          verify(mockConnector, atLeastOnce()).getFinancialData(captor.capture())(using any())
+          val vpdIdCaptor = ArgumentCaptor.forClass(classOf[String])
+          val dateFromCaptor = ArgumentCaptor.forClass(classOf[LocalDate])
+          val dateToCaptor = ArgumentCaptor.forClass(classOf[LocalDate])
+          verify(mockConnector, atLeastOnce()).getFinancialData(vpdIdCaptor.capture(), dateFromCaptor.capture(), dateToCaptor.capture())(using any())
 
-          captor.getValue.selectionCriteria.dateRange.dateFrom mustBe appConfig.financialDataStartDate
-          captor.getValue.selectionCriteria.dateRange.dateTo mustBe LocalDate.now(clock)
+          dateFromCaptor.getValue mustBe appConfig.financialDataStartDate
+          dateToCaptor.getValue mustBe LocalDate.now(clock)
         }
       }
 
       "use provided dates when supplied" in {
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(testResponse))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { _ =>
-          val captor = ArgumentCaptor.forClass(classOf[FinancialDataRequest])
-          verify(mockConnector, atLeastOnce()).getFinancialData(captor.capture())(using any())
+          val vpdIdCaptor = ArgumentCaptor.forClass(classOf[String])
+          val dateFromCaptor = ArgumentCaptor.forClass(classOf[LocalDate])
+          val dateToCaptor = ArgumentCaptor.forClass(classOf[LocalDate])
+          verify(mockConnector, atLeastOnce()).getFinancialData(vpdIdCaptor.capture(), dateFromCaptor.capture(), dateToCaptor.capture())(using any())
 
-          captor.getValue.selectionCriteria.dateRange.dateFrom mustBe LocalDate.of(2024, 1, 1)
-          captor.getValue.selectionCriteria.dateRange.dateTo mustBe LocalDate.of(2024, 12, 31)
+          dateFromCaptor.getValue mustBe LocalDate.of(2024, 1, 1)
+          dateToCaptor.getValue mustBe LocalDate.of(2024, 12, 31)
         }
       }
 
       "propagate failure when connector fails" in {
         val exception = UpstreamErrorResponse("API error", INTERNAL_SERVER_ERROR)
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.failed(exception))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31))).failed) { ex =>
@@ -273,7 +277,7 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(response))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
@@ -299,7 +303,7 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(response))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
@@ -324,7 +328,7 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(response))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
@@ -346,7 +350,7 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(response))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
@@ -374,7 +378,7 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(response))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
@@ -392,7 +396,7 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(response))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
@@ -416,7 +420,7 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(response))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
@@ -440,7 +444,7 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(response))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
@@ -468,7 +472,7 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(response))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>

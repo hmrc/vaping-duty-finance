@@ -49,15 +49,5 @@ class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig)
   
   // Selection Criteria Defaults
   val dateTypePosting = "POSTING"
-  val includeClearedItemsDefault = true
-  val includeStatisticalItemsDefault = false
-  val includePaymentOnAccountDefault = false
-  
-  // Data Enrichment Defaults
-  val addRegimeTotalisationDefault = true
-  val addLockInformationDefault = false
-  val addPenaltyDetailsDefault = true
-  val addPostedInterestDetailsDefault = false
-  val addAccruingInterestDetailsDefault = true
   
 }
