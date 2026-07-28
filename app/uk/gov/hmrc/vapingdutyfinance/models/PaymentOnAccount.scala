@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.vapingdutyfinance.models.financialdata
+package uk.gov.hmrc.vapingdutyfinance.models
 
 import play.api.libs.json.{Json, OFormat}
 
-final case class RegimeTotalisation(
-  totalAccountOverdue: Option[BigDecimal],
-  totalAccountNotYetDue: Option[BigDecimal],
-  totalAccountCredit: Option[BigDecimal],
-  totalAccountBalance: Option[BigDecimal]
-)
+import java.time.LocalDate
 
-object RegimeTotalisation {
-  given format: OFormat[RegimeTotalisation] = Json.format[RegimeTotalisation]
+final case class PaymentOnAccount(
+                                     paymentReference: Option[String],
+                                     amount: BigDecimal,
+                                     paymentDate: Option[LocalDate]
+                                   )
+
+object PaymentOnAccount {
+  given format: OFormat[PaymentOnAccount] = Json.format[PaymentOnAccount]
 }

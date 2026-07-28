@@ -18,11 +18,12 @@ package uk.gov.hmrc.vapingdutyfinance.models
 
 import play.api.libs.json.{Json, OFormat}
 
+import java.time.LocalDate
+
 final case class OutstandingPayment(
-                                     chargeReference: String,
-                                     period: String,
+                                     chargeReference: Option[String],
                                      amountDue: BigDecimal,
-                                     dueDate: String,
+                                     dueDate: Option[LocalDate],
                                      status: PaymentStatus
                                    )
 

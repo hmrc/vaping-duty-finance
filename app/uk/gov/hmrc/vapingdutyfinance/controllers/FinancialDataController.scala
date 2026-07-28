@@ -35,17 +35,17 @@ class FinancialDataController @Inject()(
                                          cc: ControllerComponents
                                        )(using ExecutionContext) extends BackendController(cc) with Logging {
 
-  def getOutstandingPayments(
-                              dateFrom: Option[String],
-                              dateTo: Option[String]
-                            ): Action[AnyContent] = authorised.async { implicit request =>
+  def getPayments(
+                   dateFrom: Option[String],
+                   dateTo: Option[String]
+                 ): Action[AnyContent] = authorised.async { implicit request =>
     val parsedDateFrom = dateFrom.flatMap(parseDate)
     val parsedDateTo = dateTo.flatMap(parseDate)
 
-    service.getOutstandingPayments(request.vpdId, parsedDateFrom, parsedDateTo)
+    service.getPayments(request.vpdId, parsedDateFrom, parsedDateTo)
       .map(payments => Ok(Json.toJson(payments)))
       .recover { case ex =>
-        logger.error(s"Error retrieving outstanding payments for vpdId=${request.vpdId}: ${ex.getMessage}", ex)
+        logger.error(s"Error retrieving payments for vpdId=${request.vpdId}: ${ex.getMessage}", ex)
         InternalServerError(Json.obj("error" -> "An error occurred while retrieving financial data"))
       }
   }

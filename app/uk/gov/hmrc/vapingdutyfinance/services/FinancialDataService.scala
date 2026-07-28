@@ -20,10 +20,9 @@ import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
 import uk.gov.hmrc.vapingdutyfinance.connectors.FinancialDataConnector
-import uk.gov.hmrc.vapingdutyfinance.models.{OutstandingPayment, PaymentStatus}
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
+import uk.gov.hmrc.vapingdutyfinance.models.{MainTransactionType, OutstandingPayment, PaymentStatus, PaymentsResponse}
 
-import java.time.format.DateTimeFormatter
 import java.time.{Clock, LocalDate}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -35,92 +34,84 @@ class FinancialDataService @Inject()(
                                       clock: Clock
                                     )(using ExecutionContext) extends Logging {
 
-  private val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
+  def getPayments(
+                   vpdId: String,
+                   dateFrom: Option[LocalDate],
+                   dateTo: Option[LocalDate]
+                 )(using HeaderCarrier): Future[PaymentsResponse] = {
+    val effectiveDateFrom = dateFrom.getOrElse(appConfig.financialDataStartDate)
+    val effectiveDateTo = dateTo.getOrElse(LocalDate.now(clock))
 
-  def getOutstandingPayments(
-                              vpdId: String,
-                              dateFrom: Option[LocalDate],
-                              dateTo: Option[LocalDate]
-                            )(using HeaderCarrier): Future[Seq[OutstandingPayment]] = {
-
-    if (appConfig.useStaticFinancialData) {
-      logger.info(s"Using static financial data for vpdId=$vpdId")
-      Future.successful(getStaticOutstandingPayments)
-    } else {
-      val effectiveDateFrom = dateFrom.getOrElse(
-        LocalDate.now(clock).minusMonths(appConfig.defaultDateRangeMonths.toLong)
-      )
-      val effectiveDateTo = dateTo.getOrElse(LocalDate.now(clock))
-
-      val request = buildRequest(vpdId, effectiveDateFrom, effectiveDateTo)
-
-      connector.getFinancialData(request)
-        .map(response => transformToOutstandingPayments(response))
-    }
+    connector.getFinancialData(vpdId, effectiveDateFrom, effectiveDateTo)
+      .map(response => transformToPayments(response))
   }
 
-  private def buildRequest(
-                            vpdId: String,
-                            dateFrom: LocalDate,
-                            dateTo: LocalDate
-                          ): FinancialDataRequest = {
-    FinancialDataRequest(
-      taxRegime = appConfig.taxRegimeVpd,
-      taxpayerInformation = TaxpayerInformation(
-        idType = appConfig.idTypeVpd,
-        idNumber = vpdId
-      ),
-      selectionCriteria = SelectionCriteria(
-        dateRange = DateRange(
-          dateType = appConfig.dateTypePosting,
-          dateFrom = dateFrom,
-          dateTo = dateTo
-        ),
-        includeClearedItems = appConfig.includeClearedItemsDefault,
-        includeStatisticalItems = appConfig.includeStatisticalItemsDefault,
-        includePaymentOnAccount = appConfig.includePaymentOnAccountDefault
-      ),
-      dataEnrichment = DataEnrichmentOptions(
-        addRegimeTotalisation = appConfig.addRegimeTotalisationDefault,
-        addLockInformation = appConfig.addLockInformationDefault,
-        addPenaltyDetails = appConfig.addPenaltyDetailsDefault,
-        addPostedInterestDetails = appConfig.addPostedInterestDetailsDefault,
-        addAccruingInterestDetails = appConfig.addAccruingInterestDetailsDefault
-      )
+  private def transformToPayments(response: FinancialDataResponse): PaymentsResponse = {
+    val documents = response.success.financialData.flatMap(_.documentDetails).getOrElse(Seq.empty)
+    val totalAccountBalance = response.success.financialData
+      .flatMap(_.totalisation)
+      .flatMap(_.regimeTotalisation)
+      .flatMap(_.totalAccountBalance)
+
+    val (paymentOnAccountDocs, outstandingAndCleared) = documents.partition(isPaymentOnAccountDocument)
+
+    val outstanding = outstandingAndCleared
+      .filter(_.documentOutstandingAmount.exists(_ > 0))
+      .flatMap(toOutstandingPayments)
+
+//    val cleared = outstandingAndCleared
+//      .filter(_.documentClearedAmount.exists(_ > 0))
+//      .flatMap(toClearedPayments)
+//
+//    val paymentOnAccount = paymentOnAccountDocs.map(toPaymentOnAccountMainTransaction)
+
+    PaymentsResponse(
+      outstanding = outstanding,
+      paymentOnAccount = Seq.empty,
+      cleared = Seq.empty,
+      totalAccountBalance = totalAccountBalance
     )
   }
 
-  private def transformToOutstandingPayments(response: FinancialDataResponse): Seq[OutstandingPayment] = {
-    val payments = response.success.financialData
-      .flatMap(_.documentDetails)
-      .getOrElse(Seq.empty)
-      .flatMap { doc =>
-        doc.lineItemDetails.getOrElse(Seq.empty).map { lineItem =>
-          val period = formatPeriod(lineItem.periodFromDate, lineItem.periodToDate)
-          val dueDate = lineItem.netDueDate.map(_.format(dateFormatter)).getOrElse("Unknown")
-          val status = determineStatus(lineItem.netDueDate)
+  private def lineItems(doc: DocumentDetails): Seq[LineItemDetails] =
+    doc.lineItemDetails.getOrElse(Seq.empty)
 
-          OutstandingPayment(
-            chargeReference = doc.chargeReferenceNumber.getOrElse("Unknown"),
-            period = period,
-            amountDue = doc.documentOutstandingAmount.getOrElse(BigDecimal(0)),
-            dueDate = dueDate,
-            status = status
-          )
-        }
-      }
-    
-    applyZeroCheck(payments)
-  }
+  private def isPaymentOnAccount(lineItem: LineItemDetails): Boolean =
+    lineItem.mainTransaction.contains(MainTransactionType.PaymentOnAccount.code)
 
-  private def formatPeriod(fromDate: Option[LocalDate], toDate: Option[LocalDate]): String = {
-    (fromDate, toDate) match {
-      case (Some(from), Some(to)) => s"${from.format(dateFormatter)} to ${to.format(dateFormatter)}"
-      case (Some(from), None) => s"From ${from.format(dateFormatter)}"
-      case (None, Some(to)) => s"To ${to.format(dateFormatter)}"
-      case _ => "Unknown period"
+  private def isVpdRegime(doc: DocumentDetails): Boolean =
+    doc.contractObjectType.contains("ZVPD")
+
+  private def isPaymentOnAccountDocument(doc: DocumentDetails): Boolean =
+    lineItems(doc).exists(isPaymentOnAccount) && isVpdRegime(doc)
+
+  private def toOutstandingPayments(doc: DocumentDetails): Seq[OutstandingPayment] =
+    lineItems(doc).map { lineItem =>
+      OutstandingPayment(
+        chargeReference = doc.chargeReferenceNumber,
+        amountDue = doc.documentOutstandingAmount.getOrElse(BigDecimal(0)),
+        dueDate = lineItem.netDueDate,
+        status = determineStatus(lineItem.netDueDate)
+      )
     }
-  }
+
+//  private def toClearedPayments(doc: DocumentDetails): Seq[ClearedPayment] =
+//    lineItems(doc).map { lineItem =>
+//      ClearedPayment(
+//        chargeReference = doc.chargeReferenceNumber,
+//        periodFromDate = lineItem.periodFromDate,
+//        periodToDate = lineItem.periodToDate,
+//        amountPaid = doc.documentClearedAmount.getOrElse(BigDecimal(0)),
+//        clearedDate = lineItem.clearingDate
+//      )
+//    }
+//
+//  private def toPaymentOnAccountMainTransaction(doc: DocumentDetails): PaymentOnAccountMainTransaction =
+//    PaymentOnAccountMainTransaction(
+//      paymentReference = doc.documentNumber,
+//      amount = doc.documentTotalAmount.getOrElse(BigDecimal(0)).abs,
+//      paymentDate = doc.postingDate
+//    )
 
   private def determineStatus(netDueDate: Option[LocalDate]): PaymentStatus = {
     netDueDate match {
@@ -130,43 +121,4 @@ class FinancialDataService @Inject()(
     }
   }
 
-  private def applyZeroCheck(payments: Seq[OutstandingPayment]): Seq[OutstandingPayment] = {
-    if (payments.forall(_.amountDue == BigDecimal(0))) {
-      Seq(OutstandingPayment(
-        chargeReference = "",
-        period = "",
-        amountDue = BigDecimal(0),
-        dueDate = "",
-        status = PaymentStatus.NothingToPay
-      ))
-    } else {
-      payments
-    }
-  }
-
-  private def getStaticOutstandingPayments: Seq[OutstandingPayment] = {
-    Seq(
-      OutstandingPayment(
-        chargeReference = "XM002610011594",
-        period = "2024-01-01 to 2024-01-31",
-        amountDue = BigDecimal("1250.50"),
-        dueDate = "2024-02-15",
-        status = PaymentStatus.Overdue
-      ),
-      OutstandingPayment(
-        chargeReference = "XM002610011595",
-        period = "2024-02-01 to 2024-02-29",
-        amountDue = BigDecimal("2500.00"),
-        dueDate = LocalDate.now(clock).plusDays(5).format(dateFormatter),
-        status = PaymentStatus.Due
-      ),
-      OutstandingPayment(
-        chargeReference = "XM002610011596",
-        period = "2024-03-01 to 2024-03-31",
-        amountDue = BigDecimal("750.25"),
-        dueDate = LocalDate.now(clock).plusDays(15).format(dateFormatter),
-        status = PaymentStatus.Due
-      )
-    )
-  }
 }

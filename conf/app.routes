@@ -2,4 +2,4 @@
 
 GET        /ping                                    uk.gov.hmrc.vapingdutyfinance.controllers.PingController.ping()
 
-GET        /financial-data/outstanding-payments     uk.gov.hmrc.vapingdutyfinance.controllers.FinancialDataController.getOutstandingPayments(dateFrom: Option[String] ?= None, dateTo: Option[String] ?= None)
+GET        /financial-data/payments                 uk.gov.hmrc.vapingdutyfinance.controllers.FinancialDataController.getPayments(dateFrom: Option[String] ?= None, dateTo: Option[String] ?= None)

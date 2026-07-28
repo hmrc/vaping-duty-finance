@@ -14,17 +14,23 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.vapingdutyfinance.models.financialdata
+package uk.gov.hmrc.vapingdutyfinance.models
 
-import play.api.libs.json.{Json, OFormat}
+sealed trait MainTransactionType {
+  def code: String
+  def description: String
+}
 
-final case class RegimeTotalisation(
-  totalAccountOverdue: Option[BigDecimal],
-  totalAccountNotYetDue: Option[BigDecimal],
-  totalAccountCredit: Option[BigDecimal],
-  totalAccountBalance: Option[BigDecimal]
-)
-
-object RegimeTotalisation {
-  given format: OFormat[RegimeTotalisation] = Json.format[RegimeTotalisation]
+object MainTransactionType {
+  case object PaymentOnAccount extends MainTransactionType {
+    val code = "0060"
+    val description = "Payment on Account"
+  }
+  
+  def fromCode(code: String): Option[MainTransactionType] = code match {
+    case "0060" => Some(PaymentOnAccount)
+    case _ => None
+  }
+  
+  val all: Seq[MainTransactionType] = Seq(PaymentOnAccount)
 }

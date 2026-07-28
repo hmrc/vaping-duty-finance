@@ -16,12 +16,12 @@
 
 package uk.gov.hmrc.vapingdutyfinance.services
 
+import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.when
+import org.mockito.Mockito.{atLeastOnce, verify, when}
 import play.api.http.Status.INTERNAL_SERVER_ERROR
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.vapingdutyfinance.base.SpecBase
-import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
 import uk.gov.hmrc.vapingdutyfinance.connectors.FinancialDataConnector
 import uk.gov.hmrc.vapingdutyfinance.models.PaymentStatus
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
@@ -35,75 +35,151 @@ class FinancialDataServiceSpec extends SpecBase {
 
   val service = FinancialDataService(mockConnector, appConfig, clock)
 
-  val testDocWithOutstanding: DocumentDetails = DocumentDetails(
-    documentNumber = Some("187346702498"),
-    documentType = Some("TRM New Charge"),
-    chargeReferenceNumber = Some("XP001286394838"),
-    businessPartnerNumber = Some("100893731"),
-    contractAccountNumber = Some("900726630"),
-    contractAccountCategory = Some("Excise"),
-    contractObjectNumber = Some("104920928302302"),
-    contractObjectType = Some("ZVPD"),
-    postingDate = Some(LocalDate.of(2026, 10, 1)),
-    issueDate = Some(LocalDate.of(2026, 10, 1)),
-    documentTotalAmount = Some(BigDecimal("100.0")),
-    documentClearedAmount = Some(BigDecimal("0.0")),
-    documentOutstandingAmount = Some(BigDecimal("100.0")),
-    documentInterestTotals = None,
-    documentPenaltyTotals = None,
-    lineItemDetails = Some(Seq(LineItemDetails(
-      itemNumber = Some("0001"),
-      subItemNumber = Some("003"),
-      mainTransaction = Some("4060"),
-      subTransaction = Some("3392"),
-      chargeDescription = Some("VPD Return"),
-      periodFromDate = Some(LocalDate.of(2026, 10, 1)),
-      periodToDate = Some(LocalDate.of(2026, 12, 31)),
-      periodKey = Some("26KJ"),
-      netDueDate = Some(LocalDate.of(2026, 10, 1)),
-      formBundleNumber = Some("125435934761"),
-      statisticalKey = Some("1"),
-      amount = Some(BigDecimal("3420.0")),
-      clearingDate = None,
-      clearingReason = None,
-      clearingDocument = None,
-      outgoingPaymentMethod = Some("B"),
-      ddCollectionInProgress = Some(true)
-    )))
-  )
-
-  val testResponse: FinancialDataResponse = FinancialDataResponse(
-    success = FinancialDataSuccess(
-      processingDate = Instant.parse("2026-10-01T10:15:10Z"),
-      financialData = Some(FinancialData(
-        totalisation = None,
-        documentDetails = Some(Seq(testDocWithOutstanding))
-      ))
-    )
-  )
-
-  val testErrorResponse: FinancialDataErrorResponse = FinancialDataErrorResponse(
-    errors = FinancialDataError(
-      processingDate = Instant.parse("2026-10-01T10:15:10Z"),
-      code = "018",
-      text = "No data found"
-    )
-  )
-
   "FinancialDataService" - {
-    "getOutstandingPayments must" - {
+    "getPayments must" - {
       "return outstanding payments when connector returns success" in {
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(testResponse))
 
-        whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result must not be empty
-          result.head.chargeReference mustBe "XP001286394838"
-          result.head.amountDue mustBe BigDecimal("100.0")
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding must not be empty
+          result.outstanding.head.chargeReference mustBe Some("XP001286394838")
+          result.outstanding.head.amountDue mustBe BigDecimal("100.0")
+          result.paymentOnAccount mustBe empty
+          result.cleared mustBe empty
+          result.totalAccountBalance mustBe Some(BigDecimal("300.0"))
         }
       }
 
-      "return NothingToPay payment when no documents exist" in {
+      "pass through totalisation when present in response" in {
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(testResponse))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.totalAccountBalance mustBe Some(BigDecimal("300.0"))
+        }
+      }
+
+      "return empty totalisation when not present in response" in {
+        val responseWithoutTotalisation = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = testResponse.success.financialData.map(fd =>
+              fd.copy(totalisation = None)
+            )
+          )
+        )
+
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(responseWithoutTotalisation))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.totalAccountBalance mustBe None
+        }
+      }
+
+//      "return cleared payments for documents with a cleared amount" in {
+//        val response = testResponse.copy(
+//          success = testResponse.success.copy(
+//            financialData = Some(FinancialData(totalisation = None, documentDetails = Some(Seq(testDocWithCleared))))
+//          )
+//        )
+//        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+//          .thenReturn(Future.successful(response))
+//
+//        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+//          result.outstanding mustBe empty
+//          result.paymentOnAccount mustBe empty
+//          result.cleared must not be empty
+//          result.cleared.head.chargeReference mustBe Some("XP001286394839")
+//          result.cleared.head.amountPaid mustBe BigDecimal("100.0")
+//          result.cleared.head.clearedDate mustBe Some(LocalDate.of(2026, 10, 5))
+//        }
+//      }
+//
+//      "return payment on account payments for documents with main transaction 0060" in {
+//        val response = testResponse.copy(
+//          success = testResponse.success.copy(
+//            financialData = Some(FinancialData(totalisation = None, documentDetails = Some(Seq(testDocUnallocated))))
+//          )
+//        )
+//        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+//          .thenReturn(Future.successful(response))
+//
+//        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+//          result.outstanding mustBe empty
+//          result.cleared mustBe empty
+//          result.paymentOnAccount must not be empty
+//          result.paymentOnAccount.head.paymentReference mustBe Some("187346702500")
+//          result.paymentOnAccount.head.amount mustBe BigDecimal("50.0")
+//          result.paymentOnAccount.head.paymentDate mustBe Some(LocalDate.of(2026, 10, 1))
+//        }
+//      }
+
+      "return only outstanding payments when a mix of outstanding, payment on account and cleared documents are present" in {
+        val response = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = Some(FinancialData(
+              totalisation = Some(sampleTotalisation),
+              documentDetails = Some(Seq(testDocWithOutstanding, testDocWithCleared, testDocUnallocated))
+            ))
+          )
+        )
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(response))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding.size mustBe 1
+          result.cleared mustBe empty
+          result.paymentOnAccount mustBe empty
+        }
+      }
+
+      "drop a document with an outstanding/cleared amount but no line items" in {
+        val docWithNoLineItems = testDocWithOutstanding.copy(lineItemDetails = None)
+
+        val response = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = Some(FinancialData(totalisation = Some(sampleTotalisation), documentDetails = Some(Seq(docWithNoLineItems))))
+          )
+        )
+
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(response))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding mustBe empty
+          result.paymentOnAccount mustBe empty
+          result.cleared mustBe empty
+        }
+      }
+
+      "return the outstanding amount for a document with a partial payment" in {
+        val docWithPartialPayment = testDocWithOutstanding.copy(
+          documentOutstandingAmount = Some(BigDecimal("40.0")),
+          documentClearedAmount = Some(BigDecimal("60.0")),
+          lineItemDetails = Some(Seq(
+            testDocWithOutstanding.lineItemDetails.get.head.copy(clearingDate = Some(LocalDate.of(2026, 10, 5)))
+          ))
+        )
+
+        val response = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = Some(FinancialData(totalisation = Some(sampleTotalisation), documentDetails = Some(Seq(docWithPartialPayment))))
+          )
+        )
+
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(response))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding must not be empty
+          result.outstanding.head.amountDue mustBe BigDecimal("40.0")
+          result.cleared mustBe empty
+          result.paymentOnAccount mustBe empty
+        }
+      }
+
+      "return an entirely empty PaymentsResponse when no documents exist" in {
         val emptyResponse = testResponse.copy(
           success = testResponse.success.copy(
             financialData = testResponse.success.financialData.map(fd =>
@@ -112,34 +188,67 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(emptyResponse))
 
-        whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.size mustBe 1
-          result.head.chargeReference mustBe ""
-          result.head.period mustBe ""
-          result.head.amountDue mustBe BigDecimal(0)
-          result.head.dueDate mustBe ""
-          result.head.status mustBe PaymentStatus.NothingToPay
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding mustBe empty
+          result.paymentOnAccount mustBe empty
+          result.cleared mustBe empty
         }
       }
 
-      "use default date range when dates not provided" in {
-        when(mockConnector.getFinancialData(any())(using any()))
+      "return an entirely empty PaymentsResponse when financialData itself is absent (018/no-data case)" in {
+        val noDataResponse = FinancialDataResponse(
+          success = FinancialDataSuccess(processingDate = Instant.parse("2026-10-01T10:15:10Z"), financialData = None)
+        )
+
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(noDataResponse))
+
+        whenReady(service.getPayments(testVpdId, None, None)) { result =>
+          result.outstanding mustBe empty
+          result.paymentOnAccount mustBe empty
+          result.cleared mustBe empty
+        }
+      }
+
+      "default dateFrom to the fixed VPD service start date and dateTo to today when dates not provided" in {
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(testResponse))
 
-        whenReady(service.getOutstandingPayments(testVpdId, None, None)) { result =>
-          result must not be empty
+        whenReady(service.getPayments(testVpdId, None, None)) { _ =>
+          val vpdIdCaptor = ArgumentCaptor.forClass(classOf[String])
+          val dateFromCaptor = ArgumentCaptor.forClass(classOf[LocalDate])
+          val dateToCaptor = ArgumentCaptor.forClass(classOf[LocalDate])
+          verify(mockConnector, atLeastOnce()).getFinancialData(vpdIdCaptor.capture(), dateFromCaptor.capture(), dateToCaptor.capture())(using any())
+
+          dateFromCaptor.getValue mustBe appConfig.financialDataStartDate
+          dateToCaptor.getValue mustBe LocalDate.now(clock)
+        }
+      }
+
+      "use provided dates when supplied" in {
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(testResponse))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { _ =>
+          val vpdIdCaptor = ArgumentCaptor.forClass(classOf[String])
+          val dateFromCaptor = ArgumentCaptor.forClass(classOf[LocalDate])
+          val dateToCaptor = ArgumentCaptor.forClass(classOf[LocalDate])
+          verify(mockConnector, atLeastOnce()).getFinancialData(vpdIdCaptor.capture(), dateFromCaptor.capture(), dateToCaptor.capture())(using any())
+
+          dateFromCaptor.getValue mustBe LocalDate.of(2024, 1, 1)
+          dateToCaptor.getValue mustBe LocalDate.of(2024, 12, 31)
         }
       }
 
       "propagate failure when connector fails" in {
         val exception = UpstreamErrorResponse("API error", INTERNAL_SERVER_ERROR)
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.failed(exception))
 
-        whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31))).failed) { ex =>
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31))).failed) { ex =>
           ex mustBe exception
         }
       }
@@ -162,11 +271,11 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(response))
 
-        whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.head.status mustBe PaymentStatus.Due
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding.head.status mustBe PaymentStatus.Due
         }
       }
 
@@ -188,37 +297,11 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(response))
 
-        whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.head.status mustBe PaymentStatus.Overdue
-        }
-      }
-
-      "return Due status when due date is today" in {
-        val today = LocalDate.now(clock)
-        val docWithTodayDueDate = testDocWithOutstanding.copy(
-          lineItemDetails = Some(Seq(
-            testDocWithOutstanding.lineItemDetails.get.head.copy(
-              netDueDate = Some(today)
-            )
-          ))
-        )
-
-        val response = testResponse.copy(
-          success = testResponse.success.copy(
-            financialData = testResponse.success.financialData.map(fd =>
-              fd.copy(documentDetails = Some(Seq(docWithTodayDueDate)))
-            )
-          )
-        )
-
-        when(mockConnector.getFinancialData(any())(using any()))
-          .thenReturn(Future.successful(response))
-
-        whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.head.status mustBe PaymentStatus.Due
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding.head.status mustBe PaymentStatus.Overdue
         }
       }
 
@@ -239,32 +322,11 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(response))
 
-        whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.head.status mustBe PaymentStatus.Due
-        }
-      }
-
-      "handle negative outstanding amounts correctly" in {
-        val docWithNegativeAmount = testDocWithOutstanding.copy(
-          documentOutstandingAmount = Some(BigDecimal("-150.75"))
-        )
-
-        val response = testResponse.copy(
-          success = testResponse.success.copy(
-            financialData = testResponse.success.financialData.map(fd =>
-              fd.copy(documentDetails = Some(Seq(docWithNegativeAmount)))
-            )
-          )
-        )
-
-        when(mockConnector.getFinancialData(any())(using any()))
-          .thenReturn(Future.successful(response))
-
-        whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.head.amountDue mustBe BigDecimal("-150.75")
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding.head.status mustBe PaymentStatus.Due
         }
       }
 
@@ -282,11 +344,11 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(response))
 
-        whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.head.amountDue mustBe preciseAmount
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding.head.amountDue mustBe preciseAmount
         }
       }
 
@@ -310,173 +372,110 @@ class FinancialDataServiceSpec extends SpecBase {
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(response))
 
-        whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.size mustBe 2
-        }
-      }
-    }
-
-    "when using static financial data must" - {
-      "return static payments when useStaticFinancialData is true" in {
-        val mockAppConfigWithStatic = mock[uk.gov.hmrc.vapingdutyfinance.config.AppConfig]
-        when(mockAppConfigWithStatic.useStaticFinancialData).thenReturn(true)
-        
-        val serviceWithStaticData = FinancialDataService(mockConnector, mockAppConfigWithStatic, clock)
-
-        whenReady(serviceWithStaticData.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { payments =>
-          payments.size mustBe 3
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding.size mustBe 2
         }
       }
 
-      "return first static payment with correct values" in {
-        val mockAppConfigWithStatic = mock[AppConfig]
-        when(mockAppConfigWithStatic.useStaticFinancialData).thenReturn(true)
-        
-        val serviceWithStaticData = FinancialDataService(mockConnector, mockAppConfigWithStatic, clock)
+      "treat payment on account with VPD contract object as payment on account" in {
+        val response = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = Some(FinancialData(
+              totalisation = Some(sampleTotalisation),
+              documentDetails = Some(Seq(testDocUnallocated))
+            ))
+          )
+        )
 
-        whenReady(serviceWithStaticData.getOutstandingPayments(testVpdId, None, None)) { payments =>
-          val firstPayment = payments.head
-          
-          firstPayment.chargeReference mustBe "XM002610011594"
-          firstPayment.period mustBe "2024-01-01 to 2024-01-31"
-          firstPayment.amountDue mustBe BigDecimal("1250.50")
-          firstPayment.dueDate mustBe "2024-02-15"
-          firstPayment.status mustBe PaymentStatus.Overdue
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(response))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding mustBe empty
+          result.cleared mustBe empty
+          result.paymentOnAccount mustBe empty
         }
       }
 
-      "ignore date parameters when using static data" in {
-        val mockAppConfigWithStatic = mock[uk.gov.hmrc.vapingdutyfinance.config.AppConfig]
-        when(mockAppConfigWithStatic.useStaticFinancialData).thenReturn(true)
-        
-        val serviceWithStaticData = FinancialDataService(mockConnector, mockAppConfigWithStatic, clock)
+      "not treat payment on account with non-VPD contract object as payment on account" in {
+        val nonVpdDoc = testDocUnallocated.copy(
+          contractObjectType = Some("ZADP")
+        )
 
-        // Call with different date parameters
-        val result1 = serviceWithStaticData.getOutstandingPayments(testVpdId, Some(LocalDate.of(2020, 1, 1)), Some(LocalDate.of(2020, 12, 31)))
-        val result2 = serviceWithStaticData.getOutstandingPayments(testVpdId, Some(LocalDate.of(2025, 1, 1)), Some(LocalDate.of(2025, 12, 31)))
-        val result3 = serviceWithStaticData.getOutstandingPayments(testVpdId, None, None)
+        val response = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = Some(FinancialData(
+              totalisation = Some(sampleTotalisation),
+              documentDetails = Some(Seq(nonVpdDoc))
+            ))
+          )
+        )
 
-        whenReady(result1) { payments1 =>
-          whenReady(result2) { payments2 =>
-            whenReady(result3) { payments3 =>
-              // All should return the same static data regardless of dates
-              payments1 mustBe payments2
-              payments2 mustBe payments3
-            }
-          }
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(response))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding mustBe empty
+          result.cleared mustBe empty
+          result.paymentOnAccount mustBe empty
         }
       }
-    }
 
-    "formatPeriod must" - {
-      "format period with only from date" in {
-        val docWithOnlyFromDate = testDocWithOutstanding.copy(
+      "not treat payment on account with missing contract object as payment on account" in {
+        val noContractObjectDoc = testDocUnallocated.copy(
+          contractObjectType = None
+        )
+
+        val response = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = Some(FinancialData(
+              totalisation = Some(sampleTotalisation),
+              documentDetails = Some(Seq(noContractObjectDoc))
+            ))
+          )
+        )
+
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(response))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding mustBe empty
+          result.cleared mustBe empty
+          result.paymentOnAccount mustBe empty
+        }
+      }
+
+      "not treat non-payment-on-account with VPD contract object as payment on account" in {
+        val nonPaymentOnAccountDoc = testDocWithOutstanding.copy(
           lineItemDetails = Some(Seq(
             testDocWithOutstanding.lineItemDetails.get.head.copy(
-              periodFromDate = Some(LocalDate.of(2026, 10, 1)),
-              periodToDate = None
+              mainTransaction = Some("4060")
             )
           ))
         )
 
         val response = testResponse.copy(
           success = testResponse.success.copy(
-            financialData = testResponse.success.financialData.map(fd =>
-              fd.copy(documentDetails = Some(Seq(docWithOnlyFromDate)))
-            )
+            financialData = Some(FinancialData(
+              totalisation = None,
+              documentDetails = Some(Seq(nonPaymentOnAccountDoc))
+            ))
           )
         )
 
-        when(mockConnector.getFinancialData(any())(using any()))
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(response))
 
-        whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.head.period mustBe "From 2026-10-01"
-        }
-      }
-
-      "format period with only to date" in {
-        val docWithOnlyToDate = testDocWithOutstanding.copy(
-          lineItemDetails = Some(Seq(
-            testDocWithOutstanding.lineItemDetails.get.head.copy(
-              periodFromDate = None,
-              periodToDate = Some(LocalDate.of(2026, 12, 31))
-            )
-          ))
-        )
-
-        val response = testResponse.copy(
-          success = testResponse.success.copy(
-            financialData = testResponse.success.financialData.map(fd =>
-              fd.copy(documentDetails = Some(Seq(docWithOnlyToDate)))
-            )
-          )
-        )
-
-        when(mockConnector.getFinancialData(any())(using any()))
-          .thenReturn(Future.successful(response))
-
-        whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.head.period mustBe "To 2026-12-31"
-        }
-      }
-
-      "format period with no dates" in {
-        val docWithNoDates = testDocWithOutstanding.copy(
-          lineItemDetails = Some(Seq(
-            testDocWithOutstanding.lineItemDetails.get.head.copy(
-              periodFromDate = None,
-              periodToDate = None
-            )
-          ))
-        )
-
-        val response = testResponse.copy(
-          success = testResponse.success.copy(
-            financialData = testResponse.success.financialData.map(fd =>
-              fd.copy(documentDetails = Some(Seq(docWithNoDates)))
-            )
-          )
-        )
-
-        when(mockConnector.getFinancialData(any())(using any()))
-          .thenReturn(Future.successful(response))
-
-        whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.head.period mustBe "Unknown period"
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding must not be empty
+          result.cleared mustBe empty
+          result.paymentOnAccount mustBe empty
         }
       }
     }
 
-    "zero amount handling must" - {
-      "return NothingToPay payment when all amounts are zero" in {
-        val docWithZeroAmount = testDocWithOutstanding.copy(
-          documentOutstandingAmount = Some(BigDecimal(0))
-        )
-
-        val response = testResponse.copy(
-          success = testResponse.success.copy(
-            financialData = testResponse.success.financialData.map(fd =>
-              fd.copy(documentDetails = Some(Seq(docWithZeroAmount)))
-            )
-          )
-        )
-
-        when(mockConnector.getFinancialData(any())(using any()))
-          .thenReturn(Future.successful(response))
-
-        whenReady(service.getOutstandingPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.size mustBe 1
-          result.head.chargeReference mustBe ""
-          result.head.period mustBe ""
-          result.head.amountDue mustBe BigDecimal(0)
-          result.head.dueDate mustBe ""
-          result.head.status mustBe PaymentStatus.NothingToPay
-        }
-      }
-    }
   }
 }

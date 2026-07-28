@@ -47,9 +47,7 @@ trait SpecBase
   )
 
   override def fakeApplication(): Application =
-    GuiceApplicationBuilder()
-      .configure("microservice.services.financial-data.use-static-data" -> false)
-      .build()
+    GuiceApplicationBuilder().build()
 
   val cc: ControllerComponents = stubControllerComponents()
   val fakeRequest: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()

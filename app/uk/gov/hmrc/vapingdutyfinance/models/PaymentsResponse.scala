@@ -14,17 +14,19 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.vapingdutyfinance.models.financialdata
+package uk.gov.hmrc.vapingdutyfinance.models
 
 import play.api.libs.json.{Json, OFormat}
 
-final case class RegimeTotalisation(
-  totalAccountOverdue: Option[BigDecimal],
-  totalAccountNotYetDue: Option[BigDecimal],
-  totalAccountCredit: Option[BigDecimal],
-  totalAccountBalance: Option[BigDecimal]
-)
+final case class PaymentsResponse(
+                                   outstanding: Seq[OutstandingPayment],
+                                   paymentOnAccount: Seq[PaymentOnAccount],
+                                   cleared: Seq[ClearedPayment],
+                                   totalAccountBalance: Option[BigDecimal]
+                                 )
 
-object RegimeTotalisation {
-  given format: OFormat[RegimeTotalisation] = Json.format[RegimeTotalisation]
+object PaymentsResponse {
+  val empty: PaymentsResponse = PaymentsResponse(Seq.empty, Seq.empty, Seq.empty, None)
+
+  given format: OFormat[PaymentsResponse] = Json.format[PaymentsResponse]
 }
