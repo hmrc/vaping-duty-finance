@@ -21,7 +21,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
 import uk.gov.hmrc.vapingdutyfinance.connectors.FinancialDataConnector
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
-import uk.gov.hmrc.vapingdutyfinance.models.{MainTransactionType, OutstandingPayment, PaymentStatus, PaymentsResponse}
+import uk.gov.hmrc.vapingdutyfinance.models.{ClearedPayment, MainTransactionType, OutstandingPayment, PaymentOnAccount, PaymentStatus, PaymentsResponse}
 
 import java.time.{Clock, LocalDate}
 import javax.inject.{Inject, Singleton}
@@ -59,16 +59,16 @@ class FinancialDataService @Inject()(
       .filter(_.documentOutstandingAmount.exists(_ > 0))
       .flatMap(toOutstandingPayments)
 
-//    val cleared = outstandingAndCleared
-//      .filter(_.documentClearedAmount.exists(_ > 0))
-//      .flatMap(toClearedPayments)
-//
-//    val paymentOnAccount = paymentOnAccountDocs.map(toPaymentOnAccountMainTransaction)
+    val cleared = outstandingAndCleared
+      .filter(_.documentClearedAmount.exists(_ > 0))
+      .flatMap(toClearedPayments)
+
+    val paymentOnAccount = paymentOnAccountDocs.map(toPaymentOnAccount)
 
     PaymentsResponse(
       outstanding = outstanding,
-      paymentOnAccount = Seq.empty,
-      cleared = Seq.empty,
+      paymentOnAccount = paymentOnAccount,
+      cleared = cleared,
       totalAccountBalance = totalAccountBalance
     )
   }
@@ -95,23 +95,20 @@ class FinancialDataService @Inject()(
       )
     }
 
-//  private def toClearedPayments(doc: DocumentDetails): Seq[ClearedPayment] =
-//    lineItems(doc).map { lineItem =>
-//      ClearedPayment(
-//        chargeReference = doc.chargeReferenceNumber,
-//        periodFromDate = lineItem.periodFromDate,
-//        periodToDate = lineItem.periodToDate,
-//        amountPaid = doc.documentClearedAmount.getOrElse(BigDecimal(0)),
-//        clearedDate = lineItem.clearingDate
-//      )
-//    }
-//
-//  private def toPaymentOnAccountMainTransaction(doc: DocumentDetails): PaymentOnAccountMainTransaction =
-//    PaymentOnAccountMainTransaction(
-//      paymentReference = doc.documentNumber,
-//      amount = doc.documentTotalAmount.getOrElse(BigDecimal(0)).abs,
-//      paymentDate = doc.postingDate
-//    )
+  private def toClearedPayments(doc: DocumentDetails): Seq[ClearedPayment] =
+    lineItems(doc).map { lineItem =>
+      ClearedPayment(
+        chargeReference = doc.chargeReferenceNumber,
+        amountPaid = doc.documentClearedAmount.getOrElse(BigDecimal(0)),
+        clearedDate = lineItem.clearingDate
+      )
+    }
+
+  private def toPaymentOnAccount(doc: DocumentDetails): PaymentOnAccount =
+    PaymentOnAccount(
+      amount = doc.documentTotalAmount.getOrElse(BigDecimal(0)).abs,
+      paymentDate = doc.postingDate
+    )
 
   private def determineStatus(netDueDate: Option[LocalDate]): PaymentStatus = {
     netDueDate match {

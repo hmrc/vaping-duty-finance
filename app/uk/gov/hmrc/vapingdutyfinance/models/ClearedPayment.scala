@@ -22,8 +22,6 @@ import java.time.LocalDate
 
 final case class ClearedPayment(
                                  chargeReference: Option[String],
-                                 periodFromDate: Option[LocalDate],
-                                 periodToDate: Option[LocalDate],
                                  amountPaid: BigDecimal,
                                  clearedDate: Option[LocalDate]
                                )
