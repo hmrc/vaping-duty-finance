@@ -18,6 +18,7 @@ package uk.gov.hmrc.vapingdutyfinance.connectors
 
 import play.api.http.Status.*
 import play.api.libs.json.Json
+import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.vapingdutyfinance.base.{ConnectorTestHelpers, SpecBase}
 import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
 
@@ -33,51 +34,65 @@ class PayApiConnectorISpec extends SpecBase with ConnectorTestHelpers {
       stubPost(path, CREATED, responseBody)
 
       whenReady(connector.startPayment(testStartPaymentRequest)) { result =>
-        result mustBe Right(testStartPaymentResponse)
+        result mustBe testStartPaymentResponse
         verifyPost(path)
       }
     }
 
-    "return a PaymentErrorResponse when pay-api returns 201 with invalid JSON" in new SetUp {
+    "fail with UpstreamErrorResponse when pay-api returns 201 with invalid JSON" in new SetUp {
       val invalidResponseBody = """{"invalid": "json"}"""
 
       stubPost(path, CREATED, invalidResponseBody)
 
-      whenReady(connector.startPayment(testStartPaymentRequest)) { result =>
-        result.isLeft mustBe true
-        result.left.map { error =>
-          error.statusCode mustBe INTERNAL_SERVER_ERROR
-          error.message mustBe "Invalid JSON response from pay-api"
-        }
+      whenReady(connector.startPayment(testStartPaymentRequest).failed) { exception =>
+        exception mustBe an[UpstreamErrorResponse]
+        val upstreamError = exception.asInstanceOf[UpstreamErrorResponse]
+        upstreamError.statusCode mustBe INTERNAL_SERVER_ERROR
+        upstreamError.message mustBe "Invalid JSON response from pay-api"
+        verifyPost(path)
+      }
+    }
+
+    "fail with UpstreamErrorResponse on 200 OK instead of 201 Created" in new SetUp {
+      stubPost(path, OK, Json.toJson(testStartPaymentResponse).toString())
+
+      whenReady(connector.startPayment(testStartPaymentRequest).failed) { exception =>
+        exception mustBe an[UpstreamErrorResponse]
+        val upstreamError = exception.asInstanceOf[UpstreamErrorResponse]
+        upstreamError.statusCode mustBe OK
+        upstreamError.message mustBe "Unexpected response from pay-api"
         verifyPost(path)
       }
     }
 
     Seq(
       ("BadRequest", BAD_REQUEST),
+      ("Unauthorized", UNAUTHORIZED),
+      ("Forbidden", FORBIDDEN),
       ("NotFound", NOT_FOUND),
       ("UnprocessableEntity", UNPROCESSABLE_ENTITY),
-      ("InternalServerError", INTERNAL_SERVER_ERROR)
+      ("InternalServerError", INTERNAL_SERVER_ERROR),
+      ("ServiceUnavailable", SERVICE_UNAVAILABLE)
     ).foreach { case (errorName, statusCode) =>
-      s"return a PaymentErrorResponse when pay-api returns $statusCode" in new SetUp {
+      s"fail with UpstreamErrorResponse when pay-api returns $statusCode" in new SetUp {
         stubPost(path, statusCode, "")
 
-        whenReady(connector.startPayment(testStartPaymentRequest)) { result =>
-          result.isLeft mustBe true
-          result.left.map { error =>
-            error.statusCode mustBe statusCode
-            error.message mustBe "Unexpected response from pay-api"
-          }
+        whenReady(connector.startPayment(testStartPaymentRequest).failed) { exception =>
+          exception mustBe an[UpstreamErrorResponse]
+          val upstreamError = exception.asInstanceOf[UpstreamErrorResponse]
+          upstreamError.statusCode mustBe statusCode
+          upstreamError.message mustBe "Unexpected response from pay-api"
           verifyPost(path)
         }
       }
     }
 
-    "return a PaymentErrorResponse when a network fault occurs" in new SetUp {
+    "fail on network fault" in new SetUp {
       stubPostFault(path)
 
       whenReady(connector.startPayment(testStartPaymentRequest).failed) { exception =>
         exception mustBe a[Exception]
+        verifyPost(path)
       }
     }
   }

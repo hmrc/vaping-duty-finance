@@ -21,9 +21,9 @@ import play.api.http.Status.*
 import play.api.libs.json.{JsError, JsSuccess, Json}
 import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
 import uk.gov.hmrc.http.client.HttpClientV2
-import uk.gov.hmrc.http.{HeaderCarrier, HttpReadsInstances, HttpResponse, StringContextOps}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpReadsInstances, HttpResponse, StringContextOps, UpstreamErrorResponse}
 import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
-import uk.gov.hmrc.vapingdutyfinance.models.payments.{PaymentErrorResponse, StartPaymentRequest, StartPaymentResponse}
+import uk.gov.hmrc.vapingdutyfinance.models.payments.{StartPaymentRequest, StartPaymentResponse}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -38,7 +38,7 @@ class PayApiConnector @Inject()(
   private val invalidJsonMessage = "Invalid JSON response from pay-api"
 
   def startPayment(request: StartPaymentRequest)
-                  (using hc: HeaderCarrier): Future[Either[PaymentErrorResponse, StartPaymentResponse]] = {
+                  (using hc: HeaderCarrier): Future[StartPaymentResponse] = {
 
     httpClient
       .post(url"${appConfig.payApiUrl}")
@@ -54,14 +54,14 @@ class PayApiConnector @Inject()(
           case CREATED =>
             Json.parse(response.body).validate[StartPaymentResponse] match {
               case JsSuccess(data, _) =>
-                Future.successful(Right(data))
+                Future.successful(data)
               case JsError(errors) =>
                 logger.warn(s"Failed to parse pay-api response: $errors")
-                Future.successful(Left(PaymentErrorResponse(INTERNAL_SERVER_ERROR, invalidJsonMessage)))
+                Future.failed(UpstreamErrorResponse(invalidJsonMessage, INTERNAL_SERVER_ERROR))
             }
           case status =>
             logger.warn(s"Unexpected response from pay-api: status=$status")
-            Future.successful(Left(PaymentErrorResponse(status, unexpectedResponseMessage)))
+            Future.failed(UpstreamErrorResponse(unexpectedResponseMessage, status))
         }
       }
   }
