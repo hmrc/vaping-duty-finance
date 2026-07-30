@@ -18,6 +18,7 @@ package uk.gov.hmrc.vapingdutyfinance.base
 
 import uk.gov.hmrc.vapingdutyfinance.models.{ClearedPayment, OutstandingPayment, PaymentOnAccount, PaymentStatus, PaymentsResponse}
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.{DocumentDetails, FinancialData, FinancialDataResponse, FinancialDataSuccess, LineItemDetails, RegimeTotalisation, Totalisation}
+import uk.gov.hmrc.vapingdutyfinance.models.payments.{PaymentErrorResponse, StartPaymentRequest, StartPaymentResponse}
 
 import java.time.{Clock, Instant, LocalDate, ZoneId}
 
@@ -135,5 +136,26 @@ trait TestData {
     paymentOnAccount = Seq(testPaymentOnAccount),
     cleared = Seq(testClearedPayment),
     totalAccountBalance = sampleRegimeTotalisation.totalAccountBalance
+  )
+
+  // Payment test data
+  val testVapingDutyReference = "XE123456789012"
+  val testAmountInPence: Long = 33500
+  val testChargeReferenceNumber = "XE1234567890AB"
+  val testReturnUrl = "https://tax.gov.uk/payment-ok?paymentId={PAYMENT_ID}"
+  val testBackUrl = "https://tax.gov.uk/back?paymentId={PAYMENT_ID}"
+  val testJourneyId = "test-journey-id-123"
+  val testNextUrl = "https://www.tax.service.gov.uk/pay/test-journey-id-123/start"
+
+  val testStartPaymentRequest: StartPaymentRequest = StartPaymentRequest(vapingDutyReference = testVapingDutyReference, amountInPence = testAmountInPence, chargeReferenceNumber = testChargeReferenceNumber, returnUrl = testReturnUrl, backUrl = testBackUrl)
+
+  val testStartPaymentResponse: StartPaymentResponse = StartPaymentResponse(
+    journeyId = testJourneyId,
+    nextUrl = testNextUrl
+  )
+
+  val testPaymentErrorResponse: PaymentErrorResponse = PaymentErrorResponse(
+    statusCode = 500,
+    message = "Unexpected response from pay-api"
   )
 }

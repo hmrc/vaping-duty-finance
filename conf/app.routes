@@ -3,3 +3,5 @@
 GET        /ping                                    uk.gov.hmrc.vapingdutyfinance.controllers.PingController.ping()
 
 GET        /financial-data/payments                 uk.gov.hmrc.vapingdutyfinance.controllers.FinancialDataController.getPayments(dateFrom: Option[String] ?= None, dateTo: Option[String] ?= None)
+
+POST       /payments/start-payment                  uk.gov.hmrc.vapingdutyfinance.controllers.PaymentController.startPayment()
