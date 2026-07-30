@@ -18,7 +18,7 @@ package uk.gov.hmrc.vapingdutyfinance.base
 
 import uk.gov.hmrc.vapingdutyfinance.models.{ClearedPayment, OutstandingPayment, PaymentOnAccount, PaymentStatus, PaymentsResponse}
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.{DocumentDetails, FinancialData, FinancialDataResponse, FinancialDataSuccess, LineItemDetails, RegimeTotalisation, Totalisation}
-import uk.gov.hmrc.vapingdutyfinance.models.payments.{PaymentErrorResponse, StartPaymentRequest, StartPaymentResponse}
+import uk.gov.hmrc.vapingdutyfinance.models.payments.{StartPaymentRequest, StartPaymentResponse}
 
 import java.time.{Clock, Instant, LocalDate, ZoneId}
 
@@ -152,10 +152,5 @@ trait TestData {
   val testStartPaymentResponse: StartPaymentResponse = StartPaymentResponse(
     journeyId = testJourneyId,
     nextUrl = testNextUrl
-  )
-
-  val testPaymentErrorResponse: PaymentErrorResponse = PaymentErrorResponse(
-    statusCode = 500,
-    message = "Unexpected response from pay-api"
   )
 }
