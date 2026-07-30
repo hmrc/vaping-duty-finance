@@ -20,9 +20,9 @@ import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.when
 import play.api.libs.json.Json
 import play.api.test.Helpers.*
+import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.vapingdutyfinance.base.SpecBase
 import uk.gov.hmrc.vapingdutyfinance.connectors.PayApiConnector
-import uk.gov.hmrc.vapingdutyfinance.models.payments.PaymentErrorResponse
 
 import scala.concurrent.Future
 
@@ -40,7 +40,7 @@ class PaymentControllerSpec extends SpecBase {
     "startPayment must" - {
       "return 200 OK with StartPaymentResponse when connector returns success" in {
         when(mockConnector.startPayment(eqTo(testStartPaymentRequest))(using any()))
-          .thenReturn(Future.successful(Right(testStartPaymentResponse)))
+          .thenReturn(Future.successful(testStartPaymentResponse))
 
         val request = fakeRequest.withBody(Json.toJson(testStartPaymentRequest))
         val result = controller.startPayment()(request)
@@ -57,16 +57,14 @@ class PaymentControllerSpec extends SpecBase {
         (SERVICE_UNAVAILABLE, "Service unavailable")
       ).foreach { case (statusCode, message) =>
         s"return $statusCode when connector returns $statusCode" in {
-          val errorResponse = PaymentErrorResponse(statusCode, message)
-
           when(mockConnector.startPayment(eqTo(testStartPaymentRequest))(using any()))
-            .thenReturn(Future.successful(Left(errorResponse)))
+            .thenReturn(Future.failed(UpstreamErrorResponse(message, statusCode)))
 
           val request = fakeRequest.withBody(Json.toJson(testStartPaymentRequest))
           val result = controller.startPayment()(request)
 
           status(result) mustBe statusCode
-          contentAsJson(result) mustBe Json.toJson(errorResponse)
+          contentAsJson(result) mustBe Json.obj("message" -> message)
         }
       }
 
@@ -76,6 +74,7 @@ class PaymentControllerSpec extends SpecBase {
         val result = controller.startPayment()(request)
 
         status(result) mustBe BAD_REQUEST
+        contentAsJson(result) mustBe Json.obj("message" -> "Invalid request body")
       }
     }
   }

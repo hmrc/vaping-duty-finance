@@ -19,6 +19,7 @@ package uk.gov.hmrc.vapingdutyfinance.controllers
 import play.api.Logging
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Action, ControllerComponents}
+import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.vapingdutyfinance.connectors.PayApiConnector
 import uk.gov.hmrc.vapingdutyfinance.controllers.actions.AuthorisedAction
@@ -34,17 +35,22 @@ class PaymentController @Inject()(
   payApiConnector: PayApiConnector
 )(using ExecutionContext) extends BackendController(cc) with Logging {
 
+  private val invalidRequestMessage = "Invalid request body"
+
   def startPayment(): Action[JsValue] = authorisedAction.async(parse.json) { implicit request =>
     request.body.validate[StartPaymentRequest].fold(
       errors => {
         logger.warn(s"Invalid StartPaymentRequest: $errors")
-        Future.successful(BadRequest(Json.obj("message" -> "Invalid request body")))
+        Future.successful(BadRequest(Json.obj("message" -> invalidRequestMessage)))
       },
       paymentRequest =>
-        payApiConnector.startPayment(paymentRequest).map {
-          case Right(response) => Ok(Json.toJson(response))
-          case Left(error)     => Status(error.statusCode)(Json.toJson(error))
-        }
+        payApiConnector.startPayment(paymentRequest)
+          .map(response => Ok(Json.toJson(response)))
+          .recover {
+            case e: UpstreamErrorResponse =>
+              logger.warn(s"Error from pay-api: ${e.getMessage}")
+              Status(e.statusCode)(Json.obj("message" -> e.getMessage))
+          }
     )
   }
 }
