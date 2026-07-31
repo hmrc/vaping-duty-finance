@@ -99,7 +99,7 @@ class PayApiConnectorISpec extends SpecBase with ConnectorTestHelpers {
 
   class SetUp extends ConnectorFixture {
     val connector: PayApiConnector = appWithHttpClient.injector.instanceOf[PayApiConnector]
-    lazy val url: String = appWithHttpClient.injector.instanceOf[AppConfig].payApiUrl
+    lazy val url: String = appWithHttpClient.injector.instanceOf[AppConfig].payApiVPDUrl
     lazy val path = new java.net.URL(url).getPath
   }
 }

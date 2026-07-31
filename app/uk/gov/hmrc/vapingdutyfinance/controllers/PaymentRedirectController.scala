@@ -38,25 +38,27 @@ class PaymentRedirectController @Inject()(
   appConfig: AppConfig
 )(using ExecutionContext) extends BackendController(cc) with Logging {
 
-  def pay(chargeReference: Option[String]): Action[AnyContent] = authorisedAction.async { implicit request =>
-    financialDataService.getOutstandingAmount(request.vpdId, chargeReference).flatMap {
-      case Some(amount) =>
-        val paymentRequest = StartPaymentRequest(
-          vapingDutyReference   = request.vpdId,
-          amountInPence         = (amount * 100).setScale(0, RoundingMode.HALF_UP).toLong,
-          chargeReferenceNumber = chargeReference,
-          returnUrl             = appConfig.payReturnUrl,
-          backUrl               = appConfig.payBackUrl
-        )
-        payApiConnector.startPayment(paymentRequest)
-          .map(response => Redirect(response.nextUrl))
-          .recover { case e =>
-            logger.warn(s"Failed to start pay-api journey for vpdId=${request.vpdId}: ${e.getMessage}", e)
-            Redirect(appConfig.payErrorUrl)
-          }
-      case None =>
-        logger.warn(s"No outstanding amount found for vpdId=${request.vpdId}, chargeReference=$chargeReference")
-        Future.successful(Redirect(appConfig.payErrorUrl))
+  def pay(): Action[AnyContent] = authorisedAction.async { implicit request =>
+    financialDataService.getPayments(request.vpdId, dateFrom = None, dateTo = None).flatMap { payments =>
+      payments.totalAccountBalance match {
+        case Some(amount) =>
+          val paymentRequest = StartPaymentRequest(
+            vapingDutyReference   = request.vpdId,
+            amountInPence         = (amount * 100).setScale(0, RoundingMode.HALF_UP).toLong,
+            chargeReferenceNumber = None,
+            returnUrl             = appConfig.payReturnUrl,
+            backUrl               = appConfig.payBackUrl
+          )
+          payApiConnector.startPayment(paymentRequest, isBtaCalling = true)
+            .map(response => Redirect(response.nextUrl))
+            .recover { case e =>
+              logger.warn(s"Failed to start pay-api journey for vpdId=${request.vpdId}: ${e.getMessage}", e)
+              Redirect(appConfig.payErrorUrl)
+            }
+        case None =>
+          logger.warn(s"No totalAccountBalance found for vpdId=${request.vpdId}")
+          Future.successful(Redirect(appConfig.payErrorUrl))
+      }
     }
   }
 }

@@ -22,6 +22,7 @@ import play.api.test.Helpers.*
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.vapingdutyfinance.base.SpecBase
 import uk.gov.hmrc.vapingdutyfinance.connectors.PayApiConnector
+import uk.gov.hmrc.vapingdutyfinance.models.PaymentsResponse
 import uk.gov.hmrc.vapingdutyfinance.models.payments.StartPaymentRequest
 import uk.gov.hmrc.vapingdutyfinance.services.FinancialDataService
 
@@ -42,27 +43,9 @@ class PaymentRedirectControllerSpec extends SpecBase {
 
   "PaymentRedirectController" - {
     "pay must" - {
-      "redirect to nextUrl for a single charge reference" in {
-        when(mockFinancialDataService.getOutstandingAmount(eqTo(testVpdId), eqTo(Some(testChargeReferenceNumber)))(using any()))
-          .thenReturn(Future.successful(Some(BigDecimal(45.74))))
-        when(mockPayApiConnector.startPayment(eqTo(StartPaymentRequest(
-          vapingDutyReference   = testVpdId,
-          amountInPence         = 4574L,
-          chargeReferenceNumber = Some(testChargeReferenceNumber),
-          returnUrl             = appConfig.payReturnUrl,
-          backUrl               = appConfig.payBackUrl
-        )))(using any()))
-          .thenReturn(Future.successful(testStartPaymentResponse))
-
-        val result = controller.pay(Some(testChargeReferenceNumber))(fakeRequest)
-
-        status(result) mustBe SEE_OTHER
-        redirectLocation(result) mustBe Some(testNextUrl)
-      }
-
-      "redirect to nextUrl using the aggregate balance when no charge reference is given" in {
-        when(mockFinancialDataService.getOutstandingAmount(eqTo(testVpdId), eqTo(None))(using any()))
-          .thenReturn(Future.successful(Some(BigDecimal(82.50))))
+      "redirect to nextUrl using the account's totalAccountBalance" in {
+        when(mockFinancialDataService.getPayments(eqTo(testVpdId), eqTo(None), eqTo(None))(using any()))
+          .thenReturn(Future.successful(PaymentsResponse(Seq.empty, Seq.empty, Seq.empty, Some(BigDecimal(82.50)))))
         when(mockPayApiConnector.startPayment(eqTo(StartPaymentRequest(
           vapingDutyReference   = testVpdId,
           amountInPence         = 8250L,
@@ -72,29 +55,29 @@ class PaymentRedirectControllerSpec extends SpecBase {
         )))(using any()))
           .thenReturn(Future.successful(testStartPaymentResponse))
 
-        val result = controller.pay(None)(fakeRequest)
+        val result = controller.pay()(fakeRequest)
 
         status(result) mustBe SEE_OTHER
         redirectLocation(result) mustBe Some(testNextUrl)
       }
 
-      "redirect to the error page when no outstanding amount is found" in {
-        when(mockFinancialDataService.getOutstandingAmount(eqTo(testVpdId), eqTo(Some(testChargeReferenceNumber)))(using any()))
-          .thenReturn(Future.successful(None))
+      "redirect to the error page when no totalAccountBalance is found" in {
+        when(mockFinancialDataService.getPayments(eqTo(testVpdId), eqTo(None), eqTo(None))(using any()))
+          .thenReturn(Future.successful(PaymentsResponse(Seq.empty, Seq.empty, Seq.empty, None)))
 
-        val result = controller.pay(Some(testChargeReferenceNumber))(fakeRequest)
+        val result = controller.pay()(fakeRequest)
 
         status(result) mustBe SEE_OTHER
         redirectLocation(result) mustBe Some(appConfig.payErrorUrl)
       }
 
       "redirect to the error page when pay-api fails" in {
-        when(mockFinancialDataService.getOutstandingAmount(eqTo(testVpdId), eqTo(Some(testChargeReferenceNumber)))(using any()))
-          .thenReturn(Future.successful(Some(BigDecimal(45.74))))
+        when(mockFinancialDataService.getPayments(eqTo(testVpdId), eqTo(None), eqTo(None))(using any()))
+          .thenReturn(Future.successful(PaymentsResponse(Seq.empty, Seq.empty, Seq.empty, Some(BigDecimal(45.74)))))
         when(mockPayApiConnector.startPayment(any())(using any()))
           .thenReturn(Future.failed(UpstreamErrorResponse("Unexpected response from pay-api", INTERNAL_SERVER_ERROR)))
 
-        val result = controller.pay(Some(testChargeReferenceNumber))(fakeRequest)
+        val result = controller.pay()(fakeRequest)
 
         status(result) mustBe SEE_OTHER
         redirectLocation(result) mustBe Some(appConfig.payErrorUrl)

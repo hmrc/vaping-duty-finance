@@ -37,11 +37,12 @@ class PayApiConnector @Inject()(
   private val unexpectedResponseMessage = "Unexpected response from pay-api"
   private val invalidJsonMessage = "Invalid JSON response from pay-api"
 
-  def startPayment(request: StartPaymentRequest)
+  def startPayment(request: StartPaymentRequest, isBtaCalling: Boolean = false)
                   (using hc: HeaderCarrier): Future[StartPaymentResponse] = {
 
     httpClient
-      .post(url"${appConfig.payApiUrl}")
+      .post(url"${paymentUrl(isBtaCalling)
+      }")
       .setHeader("Content-Type" -> "application/json")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
@@ -64,5 +65,13 @@ class PayApiConnector @Inject()(
             Future.failed(UpstreamErrorResponse(unexpectedResponseMessage, status))
         }
       }
+  }
+
+  private def paymentUrl(isBtaCalling: Boolean) = {
+    if (isBtaCalling) {
+      appConfig.payApiBTAUrl
+    } else {
+      appConfig.payApiVPDUrl
+    }
   }
 }

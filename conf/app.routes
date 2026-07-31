@@ -6,4 +6,4 @@ GET        /financial-data/payments                 uk.gov.hmrc.vapingdutyfinanc
 
 POST       /payments/start-payment                  uk.gov.hmrc.vapingdutyfinance.controllers.PaymentController.startPayment()
 
-GET        /pay                                      uk.gov.hmrc.vapingdutyfinance.controllers.PaymentRedirectController.pay(chargeReference: Option[String] ?= None)
+GET        /pay                                      uk.gov.hmrc.vapingdutyfinance.controllers.PaymentRedirectController.pay()
