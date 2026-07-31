@@ -147,7 +147,7 @@ trait TestData {
   val testJourneyId = "test-journey-id-123"
   val testNextUrl = "https://www.tax.service.gov.uk/pay/test-journey-id-123/start"
 
-  val testStartPaymentRequest: StartPaymentRequest = StartPaymentRequest(vapingDutyReference = testVapingDutyReference, amountInPence = testAmountInPence, chargeReferenceNumber = testChargeReferenceNumber, returnUrl = testReturnUrl, backUrl = testBackUrl)
+  val testStartPaymentRequest: StartPaymentRequest = StartPaymentRequest(vapingDutyReference = testVapingDutyReference, amountInPence = testAmountInPence, chargeReferenceNumber = Some(testChargeReferenceNumber), returnUrl = testReturnUrl, backUrl = testBackUrl)
 
   val testStartPaymentResponse: StartPaymentResponse = StartPaymentResponse(
     journeyId = testJourneyId,

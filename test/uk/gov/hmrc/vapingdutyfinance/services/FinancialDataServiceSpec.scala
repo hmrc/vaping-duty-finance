@@ -480,5 +480,48 @@ class FinancialDataServiceSpec extends SpecBase {
       }
     }
 
+    "getOutstandingAmount must" - {
+      "return the amountDue for a matching charge reference" in {
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(testResponse))
+
+        whenReady(service.getOutstandingAmount(testVpdId, Some("XP001286394838"))) { result =>
+          result mustBe Some(BigDecimal("100.0"))
+        }
+      }
+
+      "return None when the charge reference does not match any outstanding item" in {
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(testResponse))
+
+        whenReady(service.getOutstandingAmount(testVpdId, Some("UNKNOWN-REF"))) { result =>
+          result mustBe None
+        }
+      }
+
+      "return the totalAccountBalance when no charge reference is given" in {
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(testResponse))
+
+        whenReady(service.getOutstandingAmount(testVpdId, None)) { result =>
+          result mustBe Some(BigDecimal("300.0"))
+        }
+      }
+
+      "fall back to the sum of outstanding amounts when no charge reference and no totalAccountBalance is given" in {
+        val responseWithoutTotalisation = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = testResponse.success.financialData.map(fd => fd.copy(totalisation = None))
+          )
+        )
+
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(responseWithoutTotalisation))
+
+        whenReady(service.getOutstandingAmount(testVpdId, None)) { result =>
+          result mustBe Some(BigDecimal("100.0"))
+        }
+      }
+    }
   }
 }

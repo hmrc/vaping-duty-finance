@@ -46,6 +46,22 @@ class FinancialDataService @Inject()(
       .map(response => transformToPayments(response))
   }
 
+  def getOutstandingAmount(
+                             vpdId: String,
+                             chargeReference: Option[String]
+                           )(using HeaderCarrier): Future[Option[BigDecimal]] =
+    getPayments(vpdId, dateFrom = None, dateTo = None).map { payments =>
+      chargeReference match {
+        case Some(ref) =>
+          payments.outstanding
+            .find(_.chargeReference.contains(ref))
+            .map(_.amountDue)
+        case None =>
+          payments.totalAccountBalance
+            .orElse(Some(payments.outstanding.map(_.amountDue).sum))
+      }
+    }
+
   private def transformToPayments(response: FinancialDataResponse): PaymentsResponse = {
     val documents = response.success.financialData.flatMap(_.documentDetails).getOrElse(Seq.empty)
     val totalAccountBalance = response.success.financialData
