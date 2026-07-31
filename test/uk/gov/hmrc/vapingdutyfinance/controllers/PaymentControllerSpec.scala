@@ -39,7 +39,7 @@ class PaymentControllerSpec extends SpecBase {
   "PaymentController" - {
     "startPayment must" - {
       "return 200 OK with StartPaymentResponse when connector returns success" in {
-        when(mockConnector.startPayment(eqTo(testStartPaymentRequest))(using any()))
+        when(mockConnector.startPayment(eqTo(testStartPaymentRequest), eqTo(false))(using any()))
           .thenReturn(Future.successful(testStartPaymentResponse))
 
         val request = fakeRequest.withBody(Json.toJson(testStartPaymentRequest))
@@ -57,7 +57,7 @@ class PaymentControllerSpec extends SpecBase {
         (SERVICE_UNAVAILABLE, "Service unavailable")
       ).foreach { case (statusCode, message) =>
         s"return $statusCode when connector returns $statusCode" in {
-          when(mockConnector.startPayment(eqTo(testStartPaymentRequest))(using any()))
+          when(mockConnector.startPayment(eqTo(testStartPaymentRequest), eqTo(false))(using any()))
             .thenReturn(Future.failed(UpstreamErrorResponse(message, statusCode)))
 
           val request = fakeRequest.withBody(Json.toJson(testStartPaymentRequest))

@@ -52,7 +52,7 @@ class PaymentRedirectControllerSpec extends SpecBase {
           chargeReferenceNumber = None,
           returnUrl             = appConfig.payReturnUrl,
           backUrl               = appConfig.payBackUrl
-        )))(using any()))
+        )), eqTo(true))(using any()))
           .thenReturn(Future.successful(testStartPaymentResponse))
 
         val result = controller.pay()(fakeRequest)
@@ -74,7 +74,7 @@ class PaymentRedirectControllerSpec extends SpecBase {
       "redirect to the error page when pay-api fails" in {
         when(mockFinancialDataService.getPayments(eqTo(testVpdId), eqTo(None), eqTo(None))(using any()))
           .thenReturn(Future.successful(PaymentsResponse(Seq.empty, Seq.empty, Seq.empty, Some(BigDecimal(45.74)))))
-        when(mockPayApiConnector.startPayment(any())(using any()))
+        when(mockPayApiConnector.startPayment(any(), any())(using any()))
           .thenReturn(Future.failed(UpstreamErrorResponse("Unexpected response from pay-api", INTERNAL_SERVER_ERROR)))
 
         val result = controller.pay()(fakeRequest)
