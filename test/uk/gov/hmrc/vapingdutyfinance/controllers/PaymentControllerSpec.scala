@@ -22,24 +22,24 @@ import play.api.libs.json.Json
 import play.api.test.Helpers.*
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.vapingdutyfinance.base.SpecBase
-import uk.gov.hmrc.vapingdutyfinance.connectors.PayApiConnector
+import uk.gov.hmrc.vapingdutyfinance.services.PaymentService
 
 import scala.concurrent.Future
 
 class PaymentControllerSpec extends SpecBase {
 
-  val mockConnector: PayApiConnector = mock[PayApiConnector]
+  val mockPaymentService: PaymentService = mock[PaymentService]
 
   val controller = new PaymentController(
     cc,
     fakeAuthorisedAction,
-    mockConnector
+    mockPaymentService
   )
 
   "PaymentController" - {
     "startPayment must" - {
-      "return 200 OK with StartPaymentResponse when connector returns success" in {
-        when(mockConnector.startPayment(eqTo(testStartPaymentRequest), eqTo(false))(using any()))
+      "return 200 OK with StartPaymentResponse when the service returns success" in {
+        when(mockPaymentService.startPayment(eqTo(testStartPaymentRequest))(using any()))
           .thenReturn(Future.successful(testStartPaymentResponse))
 
         val request = fakeRequest.withBody(Json.toJson(testStartPaymentRequest))
@@ -50,21 +50,21 @@ class PaymentControllerSpec extends SpecBase {
       }
 
       Seq(
-        (BAD_REQUEST, "Bad request"),
-        (NOT_FOUND, "Not found"),
-        (UNPROCESSABLE_ENTITY, "Unprocessable entity"),
-        (INTERNAL_SERVER_ERROR, "Internal server error"),
-        (SERVICE_UNAVAILABLE, "Service unavailable")
-      ).foreach { case (statusCode, message) =>
-        s"return $statusCode when connector returns $statusCode" in {
-          when(mockConnector.startPayment(eqTo(testStartPaymentRequest), eqTo(false))(using any()))
-            .thenReturn(Future.failed(UpstreamErrorResponse(message, statusCode)))
+        BAD_REQUEST,
+        NOT_FOUND,
+        UNPROCESSABLE_ENTITY,
+        INTERNAL_SERVER_ERROR,
+        SERVICE_UNAVAILABLE
+      ).foreach { statusCode =>
+        s"return $statusCode with a generic error message when the service fails with $statusCode" in {
+          when(mockPaymentService.startPayment(eqTo(testStartPaymentRequest))(using any()))
+            .thenReturn(Future.failed(UpstreamErrorResponse("some upstream detail that must not leak", statusCode)))
 
           val request = fakeRequest.withBody(Json.toJson(testStartPaymentRequest))
           val result = controller.startPayment()(request)
 
           status(result) mustBe statusCode
-          contentAsJson(result) mustBe Json.obj("message" -> message)
+          contentAsJson(result) mustBe Json.obj("error" -> "An error occurred while starting the payment")
         }
       }
 
@@ -74,7 +74,7 @@ class PaymentControllerSpec extends SpecBase {
         val result = controller.startPayment()(request)
 
         status(result) mustBe BAD_REQUEST
-        contentAsJson(result) mustBe Json.obj("message" -> "Invalid request body")
+        contentAsJson(result) mustBe Json.obj("error" -> "Invalid request body")
       }
     }
   }

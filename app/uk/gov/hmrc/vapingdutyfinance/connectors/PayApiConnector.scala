@@ -23,7 +23,7 @@ import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpReadsInstances, HttpResponse, StringContextOps, UpstreamErrorResponse}
 import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
-import uk.gov.hmrc.vapingdutyfinance.models.payments.{StartPaymentRequest, StartPaymentResponse}
+import uk.gov.hmrc.vapingdutyfinance.models.payments.{PaymentOrigin, StartPaymentRequest, StartPaymentResponse}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -37,12 +37,11 @@ class PayApiConnector @Inject()(
   private val unexpectedResponseMessage = "Unexpected response from pay-api"
   private val invalidJsonMessage = "Invalid JSON response from pay-api"
 
-  def startPayment(request: StartPaymentRequest, isBtaCalling: Boolean = false)
+  def startPayment(request: StartPaymentRequest, origin: PaymentOrigin = PaymentOrigin.Vpd)
                   (using hc: HeaderCarrier): Future[StartPaymentResponse] = {
 
     httpClient
-      .post(url"${paymentUrl(isBtaCalling)
-      }")
+      .post(url"${paymentUrl(origin)}")
       .setHeader("Content-Type" -> "application/json")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
@@ -67,11 +66,8 @@ class PayApiConnector @Inject()(
       }
   }
 
-  private def paymentUrl(isBtaCalling: Boolean) = {
-    if (isBtaCalling) {
-      appConfig.payApiBTAUrl
-    } else {
-      appConfig.payApiVPDUrl
-    }
+  private def paymentUrl(origin: PaymentOrigin) = origin match {
+    case PaymentOrigin.Bta => appConfig.payApiBTAUrl
+    case PaymentOrigin.Vpd => appConfig.payApiVPDUrl
   }
 }

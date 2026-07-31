@@ -19,41 +19,32 @@ package uk.gov.hmrc.vapingdutyfinance.controllers
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.when
 import play.api.test.Helpers.*
-import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.vapingdutyfinance.base.SpecBase
-import uk.gov.hmrc.vapingdutyfinance.connectors.PayApiConnector
 import uk.gov.hmrc.vapingdutyfinance.models.PaymentsResponse
-import uk.gov.hmrc.vapingdutyfinance.models.payments.StartPaymentRequest
-import uk.gov.hmrc.vapingdutyfinance.services.FinancialDataService
+import uk.gov.hmrc.vapingdutyfinance.services.{FinancialDataService, PaymentService}
 
 import scala.concurrent.Future
 
 class PaymentRedirectControllerSpec extends SpecBase {
 
   val mockFinancialDataService: FinancialDataService = mock[FinancialDataService]
-  val mockPayApiConnector: PayApiConnector           = mock[PayApiConnector]
+  val mockPaymentService: PaymentService             = mock[PaymentService]
 
   val controller = new PaymentRedirectController(
     cc,
     fakeAuthorisedAction,
     mockFinancialDataService,
-    mockPayApiConnector,
+    mockPaymentService,
     appConfig
   )
 
   "PaymentRedirectController" - {
     "pay must" - {
-      "redirect to nextUrl using the account's totalAccountBalance" in {
+      "redirect to nextUrl when the payment service starts a payment" in {
         when(mockFinancialDataService.getPayments(eqTo(testVpdId), eqTo(None), eqTo(None))(using any()))
           .thenReturn(Future.successful(PaymentsResponse(Seq.empty, Seq.empty, Seq.empty, Some(BigDecimal(82.50)))))
-        when(mockPayApiConnector.startPayment(eqTo(StartPaymentRequest(
-          vapingDutyReference   = testVpdId,
-          amountInPence         = 8250L,
-          chargeReferenceNumber = None,
-          returnUrl             = appConfig.payReturnUrl,
-          backUrl               = appConfig.payBackUrl
-        )), eqTo(true))(using any()))
-          .thenReturn(Future.successful(testStartPaymentResponse))
+        when(mockPaymentService.startBtaPayment(eqTo(testVpdId), eqTo(Some(BigDecimal(82.50))))(using any()))
+          .thenReturn(Future.successful(Some(testStartPaymentResponse)))
 
         val result = controller.pay()(fakeRequest)
 
@@ -61,9 +52,11 @@ class PaymentRedirectControllerSpec extends SpecBase {
         redirectLocation(result) mustBe Some(testNextUrl)
       }
 
-      "redirect to the error page when no totalAccountBalance is found" in {
+      "redirect to the error page when the payment service does not start a payment" in {
         when(mockFinancialDataService.getPayments(eqTo(testVpdId), eqTo(None), eqTo(None))(using any()))
           .thenReturn(Future.successful(PaymentsResponse(Seq.empty, Seq.empty, Seq.empty, None)))
+        when(mockPaymentService.startBtaPayment(eqTo(testVpdId), eqTo(None))(using any()))
+          .thenReturn(Future.successful(None))
 
         val result = controller.pay()(fakeRequest)
 
@@ -71,11 +64,11 @@ class PaymentRedirectControllerSpec extends SpecBase {
         redirectLocation(result) mustBe Some(appConfig.payErrorUrl)
       }
 
-      "redirect to the error page when pay-api fails" in {
+      "redirect to the error page when the payment service fails" in {
         when(mockFinancialDataService.getPayments(eqTo(testVpdId), eqTo(None), eqTo(None))(using any()))
           .thenReturn(Future.successful(PaymentsResponse(Seq.empty, Seq.empty, Seq.empty, Some(BigDecimal(45.74)))))
-        when(mockPayApiConnector.startPayment(any(), any())(using any()))
-          .thenReturn(Future.failed(UpstreamErrorResponse("Unexpected response from pay-api", INTERNAL_SERVER_ERROR)))
+        when(mockPaymentService.startBtaPayment(any(), any())(using any()))
+          .thenReturn(Future.failed(new RuntimeException("pay-api unavailable")))
 
         val result = controller.pay()(fakeRequest)
 

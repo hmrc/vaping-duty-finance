@@ -21,9 +21,9 @@ import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
-import uk.gov.hmrc.vapingdutyfinance.connectors.PayApiConnector
 import uk.gov.hmrc.vapingdutyfinance.controllers.actions.AuthorisedAction
 import uk.gov.hmrc.vapingdutyfinance.models.payments.StartPaymentRequest
+import uk.gov.hmrc.vapingdutyfinance.services.PaymentService
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -32,24 +32,25 @@ import scala.concurrent.{ExecutionContext, Future}
 class PaymentController @Inject()(
   cc: ControllerComponents,
   authorisedAction: AuthorisedAction,
-  payApiConnector: PayApiConnector
+  paymentService: PaymentService
 )(using ExecutionContext) extends BackendController(cc) with Logging {
 
   private val invalidRequestMessage = "Invalid request body"
+  private val paymentErrorMessage   = "An error occurred while starting the payment"
 
   def startPayment(): Action[JsValue] = authorisedAction.async(parse.json) { implicit request =>
     request.body.validate[StartPaymentRequest].fold(
       errors => {
         logger.warn(s"Invalid StartPaymentRequest: $errors")
-        Future.successful(BadRequest(Json.obj("message" -> invalidRequestMessage)))
+        Future.successful(BadRequest(Json.obj("error" -> invalidRequestMessage)))
       },
       paymentRequest =>
-        payApiConnector.startPayment(paymentRequest)
+        paymentService.startPayment(paymentRequest)
           .map(response => Ok(Json.toJson(response)))
           .recover {
             case e: UpstreamErrorResponse =>
-              logger.warn(s"Error from pay-api: ${e.getMessage}")
-              Status(e.statusCode)(Json.obj("message" -> e.getMessage))
+              logger.error(s"Error from pay-api: ${e.getMessage}", e)
+              Status(e.statusCode)(Json.obj("error" -> paymentErrorMessage))
           }
     )
   }
