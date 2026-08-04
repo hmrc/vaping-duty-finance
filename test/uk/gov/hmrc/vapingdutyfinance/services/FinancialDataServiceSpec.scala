@@ -479,6 +479,5 @@ class FinancialDataServiceSpec extends SpecBase {
         }
       }
     }
-
   }
 }

@@ -36,6 +36,19 @@ class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig)
   
   def financialDataUrl: String = s"$financialDataBaseUrl$financialDataEndpoint"
 
+  // Pay API Configuration
+  private val payApiServiceName = "pay-api"
+  private val payApiBaseUrl: String = servicesConfig.baseUrl(payApiServiceName)
+  private val payApiVPDEndpoint = "/pay-api/vaping-products-duty/vaping-products-duty/journey/start"
+  private val payApiBTAEndpoint = "/pay-api/bta/vaping-products-duty/journey/start"
+
+  def payApiVPDUrl: String = s"$payApiBaseUrl$payApiVPDEndpoint"
+  def payApiBTAUrl: String = s"$payApiBaseUrl$payApiBTAEndpoint"
+
+  // Payment redirect journey configuration (BTA-initiated payments)
+  val payReturnUrl: String = config.get[String]("payments.returnUrl")
+  val payBackUrl: String   = config.get[String]("payments.backUrl")
+
   // VPD Constants
   val taxRegimeVpd = "VPD"
   val idTypeVpd = "ZVPD"
