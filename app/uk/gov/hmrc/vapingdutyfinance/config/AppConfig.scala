@@ -48,7 +48,6 @@ class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig)
   // Payment redirect journey configuration (BTA-initiated payments)
   val payReturnUrl: String = config.get[String]("payments.returnUrl")
   val payBackUrl: String   = config.get[String]("payments.backUrl")
-  val payErrorUrl: String  = config.get[String]("payments.errorUrl")
 
   // VPD Constants
   val taxRegimeVpd = "VPD"

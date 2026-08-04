@@ -17,7 +17,7 @@
 package uk.gov.hmrc.vapingdutyfinance.services
 
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
-import org.mockito.Mockito.{never, reset, verify, when}
+import org.mockito.Mockito.when
 import uk.gov.hmrc.vapingdutyfinance.base.SpecBase
 import uk.gov.hmrc.vapingdutyfinance.connectors.PayApiConnector
 import uk.gov.hmrc.vapingdutyfinance.models.payments.{PaymentOrigin, StartPaymentRequest}
@@ -69,31 +69,7 @@ class PaymentServiceSpec extends SpecBase {
     }
 
     "startBtaPayment must" - {
-      "not call pay-api and return None when totalAccountBalance is None" in {
-        reset(mockConnector)
-        whenReady(service.startBtaPayment(testVpdId, None)) { result =>
-          result mustBe None
-          verify(mockConnector, never).startPayment(any(), any())(using any())
-        }
-      }
-
-      "not call pay-api and return None when totalAccountBalance is zero" in {
-        reset(mockConnector)
-        whenReady(service.startBtaPayment(testVpdId, Some(BigDecimal(0)))) { result =>
-          result mustBe None
-          verify(mockConnector, never).startPayment(any(), any())(using any())
-        }
-      }
-
-      "not call pay-api and return None when totalAccountBalance is negative" in {
-        reset(mockConnector)
-        whenReady(service.startBtaPayment(testVpdId, Some(BigDecimal(-10)))) { result =>
-          result mustBe None
-          verify(mockConnector, never).startPayment(any(), any())(using any())
-        }
-      }
-
-      "call pay-api with PaymentOrigin.Bta and return Some(response) for a positive balance" in {
+      "call pay-api with PaymentOrigin.Bta and return the response for a positive balance" in {
         when(mockConnector.startPayment(eqTo(StartPaymentRequest(
           vapingDutyReference   = testVpdId,
           amountInPence         = 8250L,
@@ -103,8 +79,8 @@ class PaymentServiceSpec extends SpecBase {
         )), eqTo(PaymentOrigin.Bta))(using any()))
           .thenReturn(Future.successful(testStartPaymentResponse))
 
-        whenReady(service.startBtaPayment(testVpdId, Some(BigDecimal("82.50")))) { result =>
-          result mustBe Some(testStartPaymentResponse)
+        whenReady(service.startBtaPayment(testVpdId, BigDecimal("82.50"))) { result =>
+          result mustBe testStartPaymentResponse
         }
       }
     }

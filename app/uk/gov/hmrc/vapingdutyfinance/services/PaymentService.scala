@@ -35,15 +35,8 @@ class PaymentService @Inject()(
   def startPayment(request: StartPaymentRequest)(using HeaderCarrier): Future[StartPaymentResponse] =
     payApiConnector.startPayment(request, PaymentOrigin.Vpd)
 
-  def startBtaPayment(vpdId: String, totalAccountBalance: Option[BigDecimal])
-                      (using HeaderCarrier): Future[Option[StartPaymentResponse]] =
-    totalAccountBalance.filter(_ > 0) match {
-      case Some(amount) =>
-        payApiConnector.startPayment(buildStartPaymentRequest(vpdId, amount), PaymentOrigin.Bta).map(Some(_))
-      case None =>
-        logger.warn(s"No positive totalAccountBalance found for vpdId=$vpdId")
-        Future.successful(None)
-    }
+  def startBtaPayment(vpdId: String, amount: BigDecimal)(using HeaderCarrier): Future[StartPaymentResponse] =
+    payApiConnector.startPayment(buildStartPaymentRequest(vpdId, amount), PaymentOrigin.Bta)
 
   private[services] def buildStartPaymentRequest(vpdId: String, amount: BigDecimal): StartPaymentRequest =
     StartPaymentRequest(
