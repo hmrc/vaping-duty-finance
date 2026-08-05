@@ -39,9 +39,6 @@ class PayApiConnector @Inject()(
 
   def startPayment(request: StartPaymentRequest, origin: PaymentOrigin = PaymentOrigin.Vpd)
                   (using hc: HeaderCarrier): Future[StartPaymentResponse] = {
-
-    logger.warn(s"PayApiConnector.startPayment: request = ${Json.toJson(request)}")
-
     httpClient
       .post(url"${paymentUrl(origin)}")
       .setHeader("Content-Type" -> "application/json")
@@ -52,7 +49,6 @@ class PayApiConnector @Inject()(
         Future.failed(e)
       }
       .flatMap { response =>
-        logger.warn(s"PayApiConnector.startPayment: response = $response")
         response.status match {
           case CREATED =>
             Json.parse(response.body).validate[StartPaymentResponse] match {
