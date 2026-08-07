@@ -24,7 +24,8 @@ final case class OutstandingPayment(
                                      chargeReference: Option[String],
                                      amountDue: BigDecimal,
                                      dueDate: Option[LocalDate],
-                                     status: PaymentStatus
+                                     status: PaymentStatus,
+                                     mainTransaction: Option[String]
                                    )
 
 object OutstandingPayment {

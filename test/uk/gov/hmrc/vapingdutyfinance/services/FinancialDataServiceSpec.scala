@@ -45,6 +45,7 @@ class FinancialDataServiceSpec extends SpecBase {
           result.outstanding must not be empty
           result.outstanding.head.chargeReference mustBe Some("XP001286394838")
           result.outstanding.head.amountDue mustBe BigDecimal("100.0")
+          result.outstanding.head.mainTransaction mustBe Some("4060")
           result.paymentOnAccount mustBe empty
           result.cleared mustBe empty
           result.totalAccountBalance mustBe Some(BigDecimal("300.0"))
@@ -378,6 +379,36 @@ class FinancialDataServiceSpec extends SpecBase {
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
           result.outstanding.size mustBe 2
+        }
+      }
+
+      "carry through mainTransaction for an interest charge with no special bucketing" in {
+        val pastDate = LocalDate.now(clock).minusDays(10)
+        val docWithInterestCharge = testDocWithOutstanding.copy(
+          lineItemDetails = Some(Seq(
+            testDocWithOutstanding.lineItemDetails.get.head.copy(
+              mainTransaction = Some("4061"),
+              netDueDate = Some(pastDate)
+            )
+          ))
+        )
+
+        val response = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = testResponse.success.financialData.map(fd =>
+              fd.copy(documentDetails = Some(Seq(docWithInterestCharge)))
+            )
+          )
+        )
+
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(response))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding must not be empty
+          result.outstanding.head.mainTransaction mustBe Some("4061")
+          result.outstanding.head.status mustBe PaymentStatus.Overdue
+          result.paymentOnAccount mustBe empty
         }
       }
 
