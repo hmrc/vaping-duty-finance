@@ -91,7 +91,8 @@ class FinancialDataService @Inject()(
         chargeReference = doc.chargeReferenceNumber,
         amountDue = doc.documentOutstandingAmount.getOrElse(BigDecimal(0)),
         dueDate = lineItem.netDueDate,
-        status = determineStatus(lineItem.netDueDate)
+        status = determineStatus(lineItem.netDueDate),
+        mainTransaction = lineItem.mainTransaction
       )
     }
 

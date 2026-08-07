@@ -117,7 +117,8 @@ trait TestData {
     chargeReference = Some("XP001286394838"),
     amountDue = BigDecimal("100.0"),
     dueDate = Some(LocalDate.of(2026, 10, 1)),
-    status = PaymentStatus.Due
+    status = PaymentStatus.Due,
+    mainTransaction = Some("4060")
   )
   
   val testPaymentOnAccount: PaymentOnAccount = PaymentOnAccount(
