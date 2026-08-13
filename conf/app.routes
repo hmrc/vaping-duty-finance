@@ -7,3 +7,6 @@ GET        /financial-data/payments                 uk.gov.hmrc.vapingdutyfinanc
 POST       /payments/start-payment                  uk.gov.hmrc.vapingdutyfinance.controllers.PaymentController.startPayment()
 
 GET        /pay                                      uk.gov.hmrc.vapingdutyfinance.controllers.PaymentRedirectController.pay()
+
+POST       /direct-debit/vpd-confirmation/start      uk.gov.hmrc.vapingdutyfinance.controllers.DirectDebitController.startVpdConfirmation()
+POST       /direct-debit/bta/start                   uk.gov.hmrc.vapingdutyfinance.controllers.DirectDebitController.startBta()

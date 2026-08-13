@@ -18,6 +18,7 @@ package uk.gov.hmrc.vapingdutyfinance.base
 
 import uk.gov.hmrc.vapingdutyfinance.models.{ClearedPayment, OutstandingPayment, PaymentOnAccount, PaymentStatus, PaymentsResponse}
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.{DocumentDetails, FinancialData, FinancialDataResponse, FinancialDataSuccess, LineItemDetails, RegimeTotalisation, Totalisation}
+import uk.gov.hmrc.vapingdutyfinance.models.directdebit.{StartDirectDebitRequest, StartDirectDebitResponse}
 import uk.gov.hmrc.vapingdutyfinance.models.payments.{StartPaymentRequest, StartPaymentResponse}
 
 import java.time.{Clock, Instant, LocalDate, ZoneId}
@@ -152,6 +153,19 @@ trait TestData {
 
   val testStartPaymentResponse: StartPaymentResponse = StartPaymentResponse(
     journeyId = testJourneyId,
+    nextUrl = testNextUrl
+  )
+
+  // Direct Debit test data
+  val testDirectDebitReturnUrl = "http://localhost:16001/vaping-duty/return"
+  val testDirectDebitBackUrl = "http://localhost:16001/vaping-duty/back"
+
+  val testStartDirectDebitRequest: StartDirectDebitRequest = StartDirectDebitRequest(
+    returnUrl = testDirectDebitReturnUrl,
+    backUrl = testDirectDebitBackUrl
+  )
+
+  val testStartDirectDebitResponse: StartDirectDebitResponse = StartDirectDebitResponse(
     nextUrl = testNextUrl
   )
 }
