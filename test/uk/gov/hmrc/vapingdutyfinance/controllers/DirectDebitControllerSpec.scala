@@ -38,14 +38,14 @@ class DirectDebitControllerSpec extends SpecBase {
 
   "DirectDebitController" - {
     "startVpdConfirmation must" - {
-      "redirect to nextUrl when the direct debit service starts a journey" in {
+      "return 200 OK with StartDirectDebitResponse when the direct debit service starts a journey" in {
         when(mockDirectDebitService.startDirectDebit(eqTo(testStartDirectDebitRequest), eqTo(DirectDebitOrigin.VpdConfirmation))(using any()))
           .thenReturn(Future.successful(testStartDirectDebitResponse))
 
         val result = controller.startVpdConfirmation()(fakeRequest.withBody(Json.toJson(testStartDirectDebitRequest)))
 
-        status(result) mustBe SEE_OTHER
-        redirectLocation(result) mustBe Some(testNextUrl)
+        status(result) mustBe OK
+        contentAsJson(result) mustBe Json.toJson(testStartDirectDebitResponse)
       }
 
       "return 400 BAD_REQUEST when the request body is invalid" in {
@@ -69,14 +69,14 @@ class DirectDebitControllerSpec extends SpecBase {
     }
 
     "startBta must" - {
-      "redirect to nextUrl when the direct debit service starts a journey" in {
+      "return 200 OK with StartDirectDebitResponse when the direct debit service starts a journey" in {
         when(mockDirectDebitService.startDirectDebit(eqTo(testStartDirectDebitRequest), eqTo(DirectDebitOrigin.Bta))(using any()))
           .thenReturn(Future.successful(testStartDirectDebitResponse))
 
         val result = controller.startBta()(fakeRequest.withBody(Json.toJson(testStartDirectDebitRequest)))
 
-        status(result) mustBe SEE_OTHER
-        redirectLocation(result) mustBe Some(testNextUrl)
+        status(result) mustBe OK
+        contentAsJson(result) mustBe Json.toJson(testStartDirectDebitResponse)
       }
 
       "return 400 BAD_REQUEST when the request body is invalid" in {

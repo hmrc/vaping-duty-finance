@@ -34,37 +34,27 @@ class DirectDebitController @Inject()(
   directDebitService: DirectDebitService
 )(using ExecutionContext) extends BackendController(cc) with Logging {
 
+  private val invalidRequestMessage = "Invalid request body"
   private val directDebitErrorMessage = "An error occurred while starting the direct debit journey"
 
-  def startVpdConfirmation(): Action[JsValue] = authorisedAction.async(parse.json) { implicit request =>
-    request.body.validate[StartDirectDebitRequest].fold(
-      errors => {
-        logger.warn(s"Invalid StartDirectDebitRequest JSON: $errors")
-        Future.successful(BadRequest(Json.obj("error" -> "Invalid request body")))
-      },
-      startRequest =>
-        directDebitService.startDirectDebit(startRequest, DirectDebitOrigin.VpdConfirmation)
-          .map(response => Redirect(response.nextUrl))
-          .recover { case e =>
-            logger.error(s"Failed to start direct debit journey for vpdId=${request.vpdId}: ${e.getMessage}", e)
-            InternalServerError(Json.obj("error" -> directDebitErrorMessage))
-          }
-    )
-  }
+  def startVpdConfirmation(): Action[JsValue] = startDirectDebit(DirectDebitOrigin.VpdConfirmation)
 
-  def startBta(): Action[JsValue] = authorisedAction.async(parse.json) { implicit request =>
-    request.body.validate[StartDirectDebitRequest].fold(
-      errors => {
-        logger.warn(s"Invalid StartDirectDebitRequest JSON: $errors")
-        Future.successful(BadRequest(Json.obj("error" -> "Invalid request body")))
-      },
-      startRequest =>
-        directDebitService.startDirectDebit(startRequest, DirectDebitOrigin.Bta)
-          .map(response => Redirect(response.nextUrl))
-          .recover { case e =>
-            logger.error(s"Failed to start direct debit journey for vpdId=${request.vpdId}: ${e.getMessage}", e)
-            InternalServerError(Json.obj("error" -> directDebitErrorMessage))
-          }
-    )
-  }
+  def startBta(): Action[JsValue] = startDirectDebit(DirectDebitOrigin.Bta)
+
+  private def startDirectDebit(origin: DirectDebitOrigin): Action[JsValue] =
+    authorisedAction.async(parse.json) { implicit request =>
+      request.body.validate[StartDirectDebitRequest].fold(
+        errors => {
+          logger.warn(s"Invalid StartDirectDebitRequest JSON: $errors")
+          Future.successful(BadRequest(Json.obj("error" -> invalidRequestMessage)))
+        },
+        startRequest =>
+          directDebitService.startDirectDebit(startRequest, origin)
+            .map(response => Ok(Json.toJson(response)))
+            .recover { case e =>
+              logger.error(s"Failed to start direct debit journey for vpdId=${request.vpdId}: ${e.getMessage}", e)
+              InternalServerError(Json.obj("error" -> directDebitErrorMessage))
+            }
+      )
+    }
 }
