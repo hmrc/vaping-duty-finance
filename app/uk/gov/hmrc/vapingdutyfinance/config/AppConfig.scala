@@ -46,13 +46,13 @@ class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig)
   def payApiBTAUrl: String = s"$payApiBaseUrl$payApiBTAEndpoint"
 
   // Direct Debit Configuration
-  private val directDebitServiceName = "direct-debit"
-  private val directDebitBaseUrl: String = servicesConfig.baseUrl(directDebitServiceName)
+  private val directDebitServiceName             = "direct-debit"
+  private val directDebitBaseUrl: String         = servicesConfig.baseUrl(directDebitServiceName)
   private val directDebitVpdConfirmationEndpoint = "/direct-debit-backend/vpd-confirmation/vpd/journey/start"
-  private val directDebitBtaEndpoint = "/direct-debit-backend/bta/vpd/journey/start"
+  private val directDebitBtaEndpoint             = "/direct-debit-backend/bta/vpd/journey/start"
 
   def directDebitVpdConfirmationUrl: String = s"$directDebitBaseUrl$directDebitVpdConfirmationEndpoint"
-  def directDebitBtaUrl: String = s"$directDebitBaseUrl$directDebitBtaEndpoint"
+  def directDebitBtaUrl: String             = s"$directDebitBaseUrl$directDebitBtaEndpoint"
 
   // Payment redirect journey configuration (BTA-initiated payments)
   val payReturnUrl: String = config.get[String]("payments.returnUrl")
