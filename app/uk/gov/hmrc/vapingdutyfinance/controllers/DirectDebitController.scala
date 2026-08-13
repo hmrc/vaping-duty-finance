@@ -25,7 +25,7 @@ import uk.gov.hmrc.vapingdutyfinance.models.directdebit.{DirectDebitOrigin, Star
 import uk.gov.hmrc.vapingdutyfinance.services.DirectDebitService
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class DirectDebitController @Inject()(
@@ -40,7 +40,7 @@ class DirectDebitController @Inject()(
     request.body.validate[StartDirectDebitRequest].fold(
       errors => {
         logger.warn(s"Invalid StartDirectDebitRequest JSON: $errors")
-        BadRequest(Json.obj("error" -> "Invalid request body"))
+        Future.successful(BadRequest(Json.obj("error" -> "Invalid request body")))
       },
       startRequest =>
         directDebitService.startDirectDebit(startRequest, DirectDebitOrigin.VpdConfirmation)
@@ -56,7 +56,7 @@ class DirectDebitController @Inject()(
     request.body.validate[StartDirectDebitRequest].fold(
       errors => {
         logger.warn(s"Invalid StartDirectDebitRequest JSON: $errors")
-        BadRequest(Json.obj("error" -> "Invalid request body"))
+        Future.successful(BadRequest(Json.obj("error" -> "Invalid request body")))
       },
       startRequest =>
         directDebitService.startDirectDebit(startRequest, DirectDebitOrigin.Bta)
