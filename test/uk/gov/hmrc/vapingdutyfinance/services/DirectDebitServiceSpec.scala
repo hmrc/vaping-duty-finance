@@ -32,7 +32,7 @@ class DirectDebitServiceSpec extends SpecBase {
 
   "DirectDebitService must" - {
     "delegate to the connector with VpdConfirmation origin" in {
-      when(mockDirectDebitConnector.startDirectDebit(eqTo(testStartDirectDebitRequest), eqTo(DirectDebitOrigin.VpdConfirmation))(any()))
+      when(mockDirectDebitConnector.startDirectDebit(eqTo(testStartDirectDebitRequest), eqTo(DirectDebitOrigin.VpdConfirmation))(using any()))
         .thenReturn(Future.successful(testStartDirectDebitResponse))
 
       whenReady(service.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.VpdConfirmation)) { result =>
@@ -41,7 +41,7 @@ class DirectDebitServiceSpec extends SpecBase {
     }
 
     "delegate to the connector with Bta origin" in {
-      when(mockDirectDebitConnector.startDirectDebit(eqTo(testStartDirectDebitRequest), eqTo(DirectDebitOrigin.Bta))(any()))
+      when(mockDirectDebitConnector.startDirectDebit(eqTo(testStartDirectDebitRequest), eqTo(DirectDebitOrigin.Bta))(using any()))
         .thenReturn(Future.successful(testStartDirectDebitResponse))
 
       whenReady(service.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.Bta)) { result =>
@@ -52,7 +52,7 @@ class DirectDebitServiceSpec extends SpecBase {
     "propagate connector failures" in {
       val expectedException = new RuntimeException("Connector failure")
 
-      when(mockDirectDebitConnector.startDirectDebit(any(), any())(any()))
+      when(mockDirectDebitConnector.startDirectDebit(any(), any())(using any()))
         .thenReturn(Future.failed(expectedException))
 
       whenReady(service.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
