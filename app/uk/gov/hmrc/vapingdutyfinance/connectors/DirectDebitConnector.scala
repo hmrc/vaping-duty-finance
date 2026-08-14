@@ -37,7 +37,7 @@ class DirectDebitConnector @Inject()(
   private val unexpectedResponseMessage = "Unexpected response from direct-debit-backend"
   private val invalidJsonMessage = "Invalid JSON response from direct-debit-backend"
 
-  def startDirectDebit(request: StartDirectDebitRequest, origin: DirectDebitOrigin = DirectDebitOrigin.VpdConfirmation)
+  def startDirectDebit(request: StartDirectDebitRequest, origin: DirectDebitOrigin)
                       (using hc: HeaderCarrier): Future[StartDirectDebitResponse] = {
     httpClient
       .post(url"${directDebitUrl(origin)}")
