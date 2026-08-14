@@ -101,7 +101,7 @@ class AuthorisedActionSpec extends SpecBase {
       status(result) mustBe UNAUTHORIZED
     }
 
-    "execute the block and throw AuthorisationException if cannot get the VPPAID enrolment" in {
+    "execute the block and throw AuthorisationException if cannot get the ZVPD enrolment" in {
       when(
         mockAuthConnector.authorise(
           eqTo(
