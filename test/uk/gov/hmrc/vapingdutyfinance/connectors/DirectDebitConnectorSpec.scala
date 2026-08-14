@@ -43,11 +43,11 @@ class DirectDebitConnectorSpec extends SpecBase {
 
   "DirectDebitConnector must" - {
     "return a StartDirectDebitResponse when direct-debit-backend returns 201 CREATED" in {
-      val responseBody = Json.toJson(testStartDirectDebitResponse).toString
+      val responseBody = Json.toJson(startDirectDebitResponse).toString
       stubRequestBuilderChain(Future.successful(HttpResponse(CREATED, responseBody)))
 
-      whenReady(connector.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.VpdConfirmation)) { result =>
-        result mustBe testStartDirectDebitResponse
+      whenReady(connector.startDirectDebit(startDirectDebitRequest, DirectDebitOrigin.VpdConfirmation)) { result =>
+        result mustBe startDirectDebitResponse
       }
     }
 
@@ -55,7 +55,7 @@ class DirectDebitConnectorSpec extends SpecBase {
       val invalidResponseBody = """{"invalid": "json"}"""
       stubRequestBuilderChain(Future.successful(HttpResponse(CREATED, invalidResponseBody)))
 
-      whenReady(connector.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
+      whenReady(connector.startDirectDebit(startDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
         exception mustBe an[UpstreamErrorResponse]
         val upstreamError = exception.asInstanceOf[UpstreamErrorResponse]
         upstreamError.statusCode mustBe INTERNAL_SERVER_ERROR
@@ -75,7 +75,7 @@ class DirectDebitConnectorSpec extends SpecBase {
       s"fail with UpstreamErrorResponse when direct-debit-backend returns $statusCode" in {
         stubRequestBuilderChain(Future.successful(HttpResponse(statusCode, "")))
 
-        whenReady(connector.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
+        whenReady(connector.startDirectDebit(startDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
           exception mustBe an[UpstreamErrorResponse]
           val upstreamError = exception.asInstanceOf[UpstreamErrorResponse]
           upstreamError.statusCode mustBe statusCode
@@ -87,7 +87,7 @@ class DirectDebitConnectorSpec extends SpecBase {
     "fail on network fault" in {
       stubRequestBuilderChain(Future.failed(new RuntimeException("Network error")))
 
-      whenReady(connector.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
+      whenReady(connector.startDirectDebit(startDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
         exception mustBe a[RuntimeException]
       }
     }

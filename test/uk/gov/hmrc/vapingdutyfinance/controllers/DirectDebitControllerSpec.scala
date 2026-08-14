@@ -39,13 +39,13 @@ class DirectDebitControllerSpec extends SpecBase {
   "DirectDebitController" - {
     "startVpdConfirmation must" - {
       "return 200 OK with StartDirectDebitResponse when the direct debit service starts a journey" in {
-        when(mockDirectDebitService.startDirectDebit(eqTo(testStartDirectDebitRequest), eqTo(DirectDebitOrigin.VpdConfirmation))(using any()))
-          .thenReturn(Future.successful(testStartDirectDebitResponse))
+        when(mockDirectDebitService.startDirectDebit(eqTo(startDirectDebitRequest), eqTo(DirectDebitOrigin.VpdConfirmation))(using any()))
+          .thenReturn(Future.successful(startDirectDebitResponse))
 
-        val result = controller.startVpdConfirmation()(fakeRequest.withBody(Json.toJson(testStartDirectDebitRequest)))
+        val result = controller.startVpdConfirmation()(fakeRequest.withBody(Json.toJson(startDirectDebitRequest)))
 
         status(result) mustBe OK
-        contentAsJson(result) mustBe Json.toJson(testStartDirectDebitResponse)
+        contentAsJson(result) mustBe Json.toJson(startDirectDebitResponse)
       }
 
       "return 400 BAD_REQUEST when the request body is invalid" in {
@@ -61,7 +61,7 @@ class DirectDebitControllerSpec extends SpecBase {
         when(mockDirectDebitService.startDirectDebit(any(), any())(using any()))
           .thenReturn(Future.failed(new RuntimeException("some internal detail that must not leak")))
 
-        val result = controller.startVpdConfirmation()(fakeRequest.withBody(Json.toJson(testStartDirectDebitRequest)))
+        val result = controller.startVpdConfirmation()(fakeRequest.withBody(Json.toJson(startDirectDebitRequest)))
 
         status(result) mustBe INTERNAL_SERVER_ERROR
         contentAsJson(result) mustBe Json.obj("error" -> "An error occurred while starting the direct debit journey")
@@ -70,13 +70,13 @@ class DirectDebitControllerSpec extends SpecBase {
 
     "startBta must" - {
       "return 200 OK with StartDirectDebitResponse when the direct debit service starts a journey" in {
-        when(mockDirectDebitService.startDirectDebit(eqTo(testStartDirectDebitRequest), eqTo(DirectDebitOrigin.Bta))(using any()))
-          .thenReturn(Future.successful(testStartDirectDebitResponse))
+        when(mockDirectDebitService.startDirectDebit(eqTo(startDirectDebitRequest), eqTo(DirectDebitOrigin.Bta))(using any()))
+          .thenReturn(Future.successful(startDirectDebitResponse))
 
-        val result = controller.startBta()(fakeRequest.withBody(Json.toJson(testStartDirectDebitRequest)))
+        val result = controller.startBta()(fakeRequest.withBody(Json.toJson(startDirectDebitRequest)))
 
         status(result) mustBe OK
-        contentAsJson(result) mustBe Json.toJson(testStartDirectDebitResponse)
+        contentAsJson(result) mustBe Json.toJson(startDirectDebitResponse)
       }
 
       "return 400 BAD_REQUEST when the request body is invalid" in {
@@ -92,7 +92,7 @@ class DirectDebitControllerSpec extends SpecBase {
         when(mockDirectDebitService.startDirectDebit(any(), any())(using any()))
           .thenReturn(Future.failed(new RuntimeException("some internal detail that must not leak")))
 
-        val result = controller.startBta()(fakeRequest.withBody(Json.toJson(testStartDirectDebitRequest)))
+        val result = controller.startBta()(fakeRequest.withBody(Json.toJson(startDirectDebitRequest)))
 
         status(result) mustBe INTERNAL_SERVER_ERROR
         contentAsJson(result) mustBe Json.obj("error" -> "An error occurred while starting the direct debit journey")

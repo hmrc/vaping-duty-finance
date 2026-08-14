@@ -39,7 +39,8 @@ trait SpecBase
     with MockitoSugar
     with ScalaFutures
     with GuiceOneAppPerSuite
-    with TestData {
+    with TestData 
+    with DirectDebitTestData {
 
   implicit override val patienceConfig: PatienceConfig = PatienceConfig(
     timeout = Span(5, Seconds),

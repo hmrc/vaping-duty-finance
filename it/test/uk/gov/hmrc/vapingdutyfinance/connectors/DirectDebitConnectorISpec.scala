@@ -30,23 +30,23 @@ class DirectDebitConnectorISpec extends SpecBase with ConnectorTestHelpers {
   "DirectDebitConnector must" - {
 
     "return a StartDirectDebitResponse when direct-debit-backend returns 201 CREATED for VpdConfirmation" in new SetUp {
-      val responseBody: String = Json.toJson(testStartDirectDebitResponse).toString
+      val responseBody: String = Json.toJson(startDirectDebitResponse).toString
 
       stubPost(vpdConfirmationPath, CREATED, responseBody)
 
-      whenReady(connector.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.VpdConfirmation)) { result =>
-        result mustBe testStartDirectDebitResponse
+      whenReady(connector.startDirectDebit(startDirectDebitRequest, DirectDebitOrigin.VpdConfirmation)) { result =>
+        result mustBe startDirectDebitResponse
         verifyPost(vpdConfirmationPath)
       }
     }
 
     "return a StartDirectDebitResponse when direct-debit-backend returns 201 CREATED for Bta" in new SetUp {
-      val responseBody: String = Json.toJson(testStartDirectDebitResponse).toString
+      val responseBody: String = Json.toJson(startDirectDebitResponse).toString
 
       stubPost(btaPath, CREATED, responseBody)
 
-      whenReady(connector.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.Bta)) { result =>
-        result mustBe testStartDirectDebitResponse
+      whenReady(connector.startDirectDebit(startDirectDebitRequest, DirectDebitOrigin.Bta)) { result =>
+        result mustBe startDirectDebitResponse
         verifyPost(btaPath)
       }
     }
@@ -56,7 +56,7 @@ class DirectDebitConnectorISpec extends SpecBase with ConnectorTestHelpers {
 
       stubPost(vpdConfirmationPath, CREATED, invalidResponseBody)
 
-      whenReady(connector.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
+      whenReady(connector.startDirectDebit(startDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
         exception mustBe an[UpstreamErrorResponse]
         val upstreamError = exception.asInstanceOf[UpstreamErrorResponse]
         upstreamError.statusCode mustBe INTERNAL_SERVER_ERROR
@@ -66,9 +66,9 @@ class DirectDebitConnectorISpec extends SpecBase with ConnectorTestHelpers {
     }
 
     "fail with UpstreamErrorResponse on 200 OK instead of 201 Created" in new SetUp {
-      stubPost(vpdConfirmationPath, OK, Json.toJson(testStartDirectDebitResponse).toString())
+      stubPost(vpdConfirmationPath, OK, Json.toJson(startDirectDebitResponse).toString())
 
-      whenReady(connector.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
+      whenReady(connector.startDirectDebit(startDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
         exception mustBe an[UpstreamErrorResponse]
         val upstreamError = exception.asInstanceOf[UpstreamErrorResponse]
         upstreamError.statusCode mustBe OK
@@ -89,7 +89,7 @@ class DirectDebitConnectorISpec extends SpecBase with ConnectorTestHelpers {
       s"fail with UpstreamErrorResponse when direct-debit-backend returns $statusCode" in new SetUp {
         stubPost(vpdConfirmationPath, statusCode, "")
 
-        whenReady(connector.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
+        whenReady(connector.startDirectDebit(startDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
           exception mustBe an[UpstreamErrorResponse]
           val upstreamError = exception.asInstanceOf[UpstreamErrorResponse]
           upstreamError.statusCode mustBe statusCode
@@ -102,7 +102,7 @@ class DirectDebitConnectorISpec extends SpecBase with ConnectorTestHelpers {
     "fail on network fault" in new SetUp {
       stubPostFault(vpdConfirmationPath)
 
-      whenReady(connector.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
+      whenReady(connector.startDirectDebit(startDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
         exception mustBe a[Exception]
         verifyPost(vpdConfirmationPath)
       }

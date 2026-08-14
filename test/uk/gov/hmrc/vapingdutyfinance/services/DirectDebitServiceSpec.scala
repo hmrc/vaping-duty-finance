@@ -32,20 +32,20 @@ class DirectDebitServiceSpec extends SpecBase {
 
   "DirectDebitService must" - {
     "delegate to the connector with VpdConfirmation origin" in {
-      when(mockDirectDebitConnector.startDirectDebit(eqTo(testStartDirectDebitRequest), eqTo(DirectDebitOrigin.VpdConfirmation))(using any()))
-        .thenReturn(Future.successful(testStartDirectDebitResponse))
+      when(mockDirectDebitConnector.startDirectDebit(eqTo(startDirectDebitRequest), eqTo(DirectDebitOrigin.VpdConfirmation))(using any()))
+        .thenReturn(Future.successful(startDirectDebitResponse))
 
-      whenReady(service.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.VpdConfirmation)) { result =>
-        result mustBe testStartDirectDebitResponse
+      whenReady(service.startDirectDebit(startDirectDebitRequest, DirectDebitOrigin.VpdConfirmation)) { result =>
+        result mustBe startDirectDebitResponse
       }
     }
 
     "delegate to the connector with Bta origin" in {
-      when(mockDirectDebitConnector.startDirectDebit(eqTo(testStartDirectDebitRequest), eqTo(DirectDebitOrigin.Bta))(using any()))
-        .thenReturn(Future.successful(testStartDirectDebitResponse))
+      when(mockDirectDebitConnector.startDirectDebit(eqTo(startDirectDebitRequest), eqTo(DirectDebitOrigin.Bta))(using any()))
+        .thenReturn(Future.successful(startDirectDebitResponse))
 
-      whenReady(service.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.Bta)) { result =>
-        result mustBe testStartDirectDebitResponse
+      whenReady(service.startDirectDebit(startDirectDebitRequest, DirectDebitOrigin.Bta)) { result =>
+        result mustBe startDirectDebitResponse
       }
     }
 
@@ -55,7 +55,7 @@ class DirectDebitServiceSpec extends SpecBase {
       when(mockDirectDebitConnector.startDirectDebit(any(), any())(using any()))
         .thenReturn(Future.failed(expectedException))
 
-      whenReady(service.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
+      whenReady(service.startDirectDebit(startDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
         exception mustBe expectedException
       }
     }
