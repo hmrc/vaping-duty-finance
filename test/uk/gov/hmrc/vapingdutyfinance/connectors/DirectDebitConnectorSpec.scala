@@ -34,16 +34,17 @@ class DirectDebitConnectorSpec extends SpecBase {
 
   val connector = new DirectDebitConnector(mockHttpClient, appConfig)
 
+  private def stubRequestBuilderChain(response: Future[HttpResponse]): Unit = {
+    when(mockHttpClient.post(any())(any())).thenReturn(mockRequestBuilder)
+    when(mockRequestBuilder.setHeader(any())).thenReturn(mockRequestBuilder)
+    when(mockRequestBuilder.withBody(any())(any(), any(), any())).thenReturn(mockRequestBuilder)
+    when(mockRequestBuilder.execute[HttpResponse](any(), any())).thenReturn(response)
+  }
+
   "DirectDebitConnector must" - {
     "return a StartDirectDebitResponse when direct-debit-backend returns 201 CREATED" in {
       val responseBody = Json.toJson(testStartDirectDebitResponse).toString
-
-      when(mockHttpClient.post(any())(any())).thenReturn(mockRequestBuilder)
-      when(mockRequestBuilder.setHeader(any())).thenReturn(mockRequestBuilder)
-      when(mockRequestBuilder.withBody(any())(any(), any(), any())).thenReturn(mockRequestBuilder)
-      when(mockRequestBuilder.execute[HttpResponse](any(), any())).thenReturn(
-        Future.successful(HttpResponse(CREATED, responseBody))
-      )
+      stubRequestBuilderChain(Future.successful(HttpResponse(CREATED, responseBody)))
 
       whenReady(connector.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.VpdConfirmation)) { result =>
         result mustBe testStartDirectDebitResponse
@@ -52,13 +53,7 @@ class DirectDebitConnectorSpec extends SpecBase {
 
     "fail with UpstreamErrorResponse when direct-debit-backend returns 201 with invalid JSON" in {
       val invalidResponseBody = """{"invalid": "json"}"""
-
-      when(mockHttpClient.post(any())(any())).thenReturn(mockRequestBuilder)
-      when(mockRequestBuilder.setHeader(any())).thenReturn(mockRequestBuilder)
-      when(mockRequestBuilder.withBody(any())(any(), any(), any())).thenReturn(mockRequestBuilder)
-      when(mockRequestBuilder.execute[HttpResponse](any(), any())).thenReturn(
-        Future.successful(HttpResponse(CREATED, invalidResponseBody))
-      )
+      stubRequestBuilderChain(Future.successful(HttpResponse(CREATED, invalidResponseBody)))
 
       whenReady(connector.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
         exception mustBe an[UpstreamErrorResponse]
@@ -78,12 +73,7 @@ class DirectDebitConnectorSpec extends SpecBase {
       ("ServiceUnavailable", SERVICE_UNAVAILABLE)
     ).foreach { case (errorName, statusCode) =>
       s"fail with UpstreamErrorResponse when direct-debit-backend returns $statusCode" in {
-        when(mockHttpClient.post(any())(any())).thenReturn(mockRequestBuilder)
-        when(mockRequestBuilder.setHeader(any())).thenReturn(mockRequestBuilder)
-        when(mockRequestBuilder.withBody(any())(any(), any(), any())).thenReturn(mockRequestBuilder)
-        when(mockRequestBuilder.execute[HttpResponse](any(), any())).thenReturn(
-          Future.successful(HttpResponse(statusCode, ""))
-        )
+        stubRequestBuilderChain(Future.successful(HttpResponse(statusCode, "")))
 
         whenReady(connector.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
           exception mustBe an[UpstreamErrorResponse]
@@ -95,12 +85,7 @@ class DirectDebitConnectorSpec extends SpecBase {
     }
 
     "fail on network fault" in {
-      when(mockHttpClient.post(any())(any())).thenReturn(mockRequestBuilder)
-      when(mockRequestBuilder.setHeader(any())).thenReturn(mockRequestBuilder)
-      when(mockRequestBuilder.withBody(any())(any(), any(), any())).thenReturn(mockRequestBuilder)
-      when(mockRequestBuilder.execute[HttpResponse](any(), any())).thenReturn(
-        Future.failed(new RuntimeException("Network error"))
-      )
+      stubRequestBuilderChain(Future.failed(new RuntimeException("Network error")))
 
       whenReady(connector.startDirectDebit(testStartDirectDebitRequest, DirectDebitOrigin.VpdConfirmation).failed) { exception =>
         exception mustBe a[RuntimeException]
