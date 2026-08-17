@@ -354,7 +354,7 @@ class FinancialDataServiceSpec extends SpecBase {
         }
       }
 
-      "create multiple outstanding payments when document has multiple line items" in {
+      "create a single outstanding payment when document has multiple line items" in {
         val lineItem1 = testDocWithOutstanding.lineItemDetails.get.head
         val lineItem2 = lineItem1.copy(
           itemNumber = Some("0002"),
@@ -378,7 +378,8 @@ class FinancialDataServiceSpec extends SpecBase {
           .thenReturn(Future.successful(response))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.outstanding.size mustBe 2
+          result.outstanding.size mustBe 1
+          result.outstanding.head.dueDate mustBe lineItem1.netDueDate
         }
       }
 

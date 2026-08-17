@@ -86,24 +86,26 @@ class FinancialDataService @Inject()(
     lineItems(doc).exists(isPaymentOnAccount) && isVpdRegime(doc)
 
   private def toOutstandingPayments(doc: DocumentDetails): Seq[OutstandingPayment] =
-    lineItems(doc).map { lineItem =>
+    lineItems(doc).headOption.map { firstLineItem =>
       OutstandingPayment(
         chargeReference = doc.chargeReferenceNumber,
         amountDue = doc.documentOutstandingAmount.getOrElse(BigDecimal(0)),
-        dueDate = lineItem.netDueDate,
-        status = determineStatus(lineItem.netDueDate),
-        mainTransaction = lineItem.mainTransaction
+        dueDate = firstLineItem.netDueDate,
+        status = determineStatus(firstLineItem.netDueDate),
+        mainTransaction = firstLineItem.mainTransaction
       )
-    }
+    }.toSeq
 
   private def toClearedPayments(doc: DocumentDetails): Seq[ClearedPayment] =
-    lineItems(doc).map { lineItem =>
-      ClearedPayment(
-        chargeReference = doc.chargeReferenceNumber,
-        amountPaid = doc.documentClearedAmount.getOrElse(BigDecimal(0)),
-        clearedDate = lineItem.clearingDate
-      )
-    }
+    lineItems(doc)
+      .find(_.clearingDate.nonEmpty)
+      .map { clearedLineItem =>
+        ClearedPayment(
+          chargeReference = doc.chargeReferenceNumber,
+          amountPaid = doc.documentClearedAmount.getOrElse(BigDecimal(0)),
+          clearedDate = clearedLineItem.clearingDate
+        )
+      }.toSeq
 
   private def toPaymentOnAccount(doc: DocumentDetails): PaymentOnAccount =
     PaymentOnAccount(
@@ -118,5 +120,4 @@ class FinancialDataService @Inject()(
       case None => PaymentStatus.Due
     }
   }
-
 }
