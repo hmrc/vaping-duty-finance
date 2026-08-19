@@ -89,23 +89,27 @@ class FinancialDataService @Inject()(
     lineItems(doc).headOption.map { firstLineItem =>
       OutstandingPayment(
         chargeReference = doc.chargeReferenceNumber,
-        amountDue = doc.documentOutstandingAmount.getOrElse(BigDecimal(0)),
-        dueDate = firstLineItem.netDueDate,
-        status = determineStatus(firstLineItem.netDueDate),
+        amountDue       = doc.documentOutstandingAmount.getOrElse(BigDecimal(0)),
+        dueDate         = firstLineItem.netDueDate,
+        status          = determineStatus(firstLineItem.netDueDate),
         mainTransaction = firstLineItem.mainTransaction
       )
     }.toSeq
 
   private def toClearedPayments(doc: DocumentDetails): Seq[ClearedPayment] =
+    Seq(
+      ClearedPayment(
+        chargeReference = doc.chargeReferenceNumber,
+        amountPaid      = doc.documentClearedAmount.getOrElse(BigDecimal(0)),
+        clearedDate     = mostRecentPaymentDate(doc)
+      )
+    )
+
+  private def mostRecentPaymentDate(doc: DocumentDetails): Option[LocalDate] = {
     lineItems(doc)
-      .find(_.clearingDate.nonEmpty)
-      .map { clearedLineItem =>
-        ClearedPayment(
-          chargeReference = doc.chargeReferenceNumber,
-          amountPaid = doc.documentClearedAmount.getOrElse(BigDecimal(0)),
-          clearedDate = clearedLineItem.clearingDate
-        )
-      }.toSeq
+      .flatMap(_.clearingDate)
+      .maxOption
+  }
 
   private def toPaymentOnAccount(doc: DocumentDetails): PaymentOnAccount =
     PaymentOnAccount(

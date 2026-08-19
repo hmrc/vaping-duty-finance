@@ -71,7 +71,7 @@ trait TestData {
       netDueDate = Some(LocalDate.of(2026, 10, 1)),
       formBundleNumber = Some("125435934761"),
       statisticalKey = Some("1"),
-      amount = Some(BigDecimal("3420.0")),
+      amount = Some(BigDecimal("100.0")),
       clearingDate = None,
       clearingReason = None,
       clearingDocument = None,
