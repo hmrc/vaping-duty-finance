@@ -181,6 +181,39 @@ class FinancialDataServiceSpec extends SpecBase {
         }
       }
 
+      "return both outstanding and cleared amounts for a document with multiple partial payments" in {
+        val docWithPartialPayments = testDocWithOutstanding.copy(
+          documentOutstandingAmount = Some(BigDecimal("40.0")),
+          documentClearedAmount = Some(BigDecimal("60.0")),
+          lineItemDetails = Some(Seq(
+            testDocWithOutstanding.lineItemDetails.get.head.copy(amount = Some(BigDecimal("40"))),
+            testDocWithOutstanding.lineItemDetails.get.head.copy(clearingDate = Some(LocalDate.of(2026, 10, 5)), amount = Some(BigDecimal("-35"))),
+            testDocWithOutstanding.lineItemDetails.get.head.copy(clearingDate = Some(LocalDate.of(2026, 10, 6)), amount = Some(BigDecimal("-25")))
+          ))
+        )
+
+        val response = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = Some(FinancialData(totalisation = Some(sampleTotalisation), documentDetails = Some(Seq(docWithPartialPayments))))
+          )
+        )
+
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(response))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding must not be empty
+          result.outstanding.head.amountDue mustBe BigDecimal("40.0")
+
+          result.paymentOnAccount mustBe empty
+
+          result.cleared must not be empty
+          result.cleared.length mustBe 1 
+          result.cleared.head.amountPaid mustBe BigDecimal("60.0")
+          result.cleared.head.clearedDate mustBe Some(LocalDate.of(2026, 10, 6))
+        }
+      }
+
       "return an entirely empty PaymentsResponse when no documents exist" in {
         val emptyResponse = testResponse.copy(
           success = testResponse.success.copy(
@@ -354,7 +387,7 @@ class FinancialDataServiceSpec extends SpecBase {
         }
       }
 
-      "create multiple outstanding payments when document has multiple line items" in {
+      "create a single outstanding payment when document has multiple line items" in {
         val lineItem1 = testDocWithOutstanding.lineItemDetails.get.head
         val lineItem2 = lineItem1.copy(
           itemNumber = Some("0002"),
@@ -378,7 +411,8 @@ class FinancialDataServiceSpec extends SpecBase {
           .thenReturn(Future.successful(response))
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
-          result.outstanding.size mustBe 2
+          result.outstanding.size mustBe 1
+          result.outstanding.head.dueDate mustBe lineItem1.netDueDate
         }
       }
 
