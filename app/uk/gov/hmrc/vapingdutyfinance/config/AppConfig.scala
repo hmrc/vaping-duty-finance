@@ -72,4 +72,6 @@ class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig)
   // Selection Criteria Defaults
   val dateTypePosting = "POSTING"
   
+  val financialDataClientId: String = config.get[String]("microservice.services.financial-data.clientId")
+  val financialDataSecret: String = config.get[String]("microservice.services.financial-data.secret")
 }

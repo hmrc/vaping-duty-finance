@@ -21,8 +21,9 @@ import play.api.http.Status.*
 import play.api.libs.json.{JsError, JsSuccess, Json}
 import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
 import uk.gov.hmrc.http.client.HttpClientV2
-import uk.gov.hmrc.http.{HeaderCarrier, HttpReadsInstances, HttpResponse, StringContextOps, UpstreamErrorResponse}
+import uk.gov.hmrc.http.{HeaderCarrier, HeaderNames, HttpReadsInstances, HttpResponse, StringContextOps, UpstreamErrorResponse}
 import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
+import uk.gov.hmrc.vapingdutyfinance.connectors.helpers.HIPAuth
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
 import uk.gov.hmrc.vapingdutyfinance.utils.UUIDGenerator
 
@@ -79,6 +80,7 @@ class FinancialDataConnector @Inject()(
 
     httpClient
       .post(url"${appConfig.financialDataUrl}")
+      .setHeader(HeaderNames.authorisation -> HIPAuth(appConfig).authorizationForFinancialData())
       .setHeader("correlationid" -> correlationId)
       .setHeader("X-Originating-System" -> appConfig.originatingSystemVpd)
       .setHeader("X-Receipt-Date" -> receiptDate)
