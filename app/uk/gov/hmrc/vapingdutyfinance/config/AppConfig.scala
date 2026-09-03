@@ -32,7 +32,7 @@ class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig)
   // Financial Data API Configuration
   private val financialDataServiceName = "financial-data"
   val financialDataBaseUrl: String = servicesConfig.baseUrl(financialDataServiceName)
-  val financialDataEndpoint = "/RESTAdapter/cross-regime/taxpayer/financial-data/query"
+  val financialDataEndpoint = "/etmp/RESTAdapter/cross-regime/taxpayer/financial-data/query"
   
   def financialDataUrl: String = s"$financialDataBaseUrl$financialDataEndpoint"
 
@@ -71,7 +71,7 @@ class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig)
   
   // Selection Criteria Defaults
   val dateTypePosting = "POSTING"
-  
+
   val financialDataClientId: String = config.get[String]("microservice.services.financial-data.clientId")
   val financialDataSecret: String = config.get[String]("microservice.services.financial-data.secret")
 }
