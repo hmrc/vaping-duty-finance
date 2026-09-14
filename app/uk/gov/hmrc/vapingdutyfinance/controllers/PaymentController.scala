@@ -23,7 +23,7 @@ import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.vapingdutyfinance.controllers.actions.AuthorisedAction
 import uk.gov.hmrc.vapingdutyfinance.models.payments.StartPaymentRequest
-import uk.gov.hmrc.vapingdutyfinance.services.PaymentService
+import uk.gov.hmrc.vapingdutyfinance.services.{FinancialDataService, PaymentService}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -32,11 +32,14 @@ import scala.concurrent.{ExecutionContext, Future}
 class PaymentController @Inject()(
   cc: ControllerComponents,
   authorisedAction: AuthorisedAction,
+  financialDataService: FinancialDataService,
   paymentService: PaymentService
 )(using ExecutionContext) extends BackendController(cc) with Logging {
 
   private val invalidRequestMessage = "Invalid request body"
   private val paymentErrorMessage   = "An error occurred while starting the payment"
+  private val noPaymentDueMessage = "No outstanding balance to pay"
+
 
   def startPayment(): Action[JsValue] = authorisedAction.async(parse.json) { implicit request =>
     request.body.validate[StartPaymentRequest].fold(
@@ -53,5 +56,30 @@ class PaymentController @Inject()(
               Status(e.statusCode)(Json.obj("error" -> paymentErrorMessage))
           }
     )
+  }
+
+  def startBtaPayment(): Action[JsValue] = authorisedAction.async(parse.json) { implicit request =>
+    financialDataService.getPayments(request.vpdId, dateFrom = None, dateTo = None).flatMap { payments =>
+      payments.totalAccountBalance.filter(_ > 0) match {
+        case Some(amount) =>
+          request.body.validate[StartPaymentRequest].fold(
+            errors => {
+              logger.warn(s"Invalid StartPaymentRequest for bta: $errors")
+              Future.successful(BadRequest(Json.obj("error" -> invalidRequestMessage)))
+            },
+            paymentRequest =>
+              paymentService.startBtaPayment(paymentRequest)
+                .map(response => Ok(Json.toJson(response)))
+                .recover {
+                  case e: UpstreamErrorResponse =>
+                    logger.error(s"Error from pay-api for bta: ${e.getMessage}", e)
+                    Status(e.statusCode)(Json.obj("error" -> paymentErrorMessage))
+                }
+          )
+        case None =>
+          logger.warn(s"No positive totalAccountBalance found for vpdId=${request.vpdId}")
+          Future.successful(BadRequest(Json.obj("error" -> noPaymentDueMessage)))
+      }
+    }
   }
 }
