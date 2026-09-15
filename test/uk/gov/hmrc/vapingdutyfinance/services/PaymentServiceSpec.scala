@@ -32,25 +32,32 @@ class PaymentServiceSpec extends SpecBase {
 
   "PaymentService" - {
 
-    "startPayment must" - {
-      "delegate to the connector with PaymentOrigin.Vpd" in {
-        when(mockConnector.startPayment(eqTo(testStartPaymentRequest), eqTo(PaymentOrigin.Vpd))(using any()))
-          .thenReturn(Future.successful(testStartPaymentResponse))
+    "delegate to the connector with Vpd origin" in {
+      when(mockConnector.startPayment(eqTo(testStartPaymentRequest), eqTo(PaymentOrigin.Vpd))(using any()))
+        .thenReturn(Future.successful(testStartPaymentResponse))
 
-        whenReady(service.startPayment(testStartPaymentRequest)) { result =>
-          result mustBe testStartPaymentResponse
-        }
+      whenReady(service.startPayment(testStartPaymentRequest, PaymentOrigin.Vpd)) { result =>
+        result mustBe testStartPaymentResponse
       }
     }
 
-    "startBtaPayment must" - {
-      "call pay-api with PaymentOrigin.Bta and return the response for a positive balance" in {
-        when(mockConnector.startPayment(eqTo(testStartPaymentRequest), eqTo(PaymentOrigin.Bta))(using any()))
-          .thenReturn(Future.successful(testStartPaymentResponse))
+    "delegate to the connector with Bta origin" in {
+      when(mockConnector.startPayment(eqTo(testStartPaymentRequest), eqTo(PaymentOrigin.Bta))(using any()))
+        .thenReturn(Future.successful(testStartPaymentResponse))
 
-        whenReady(service.startBtaPayment(testStartPaymentRequest)) { result =>
-          result mustBe testStartPaymentResponse
-        }
+      whenReady(service.startPayment(testStartPaymentRequest, PaymentOrigin.Bta)) { result =>
+        result mustBe testStartPaymentResponse
+      }
+    }
+
+    "propagate connector failures" in {
+      val expectedException = new RuntimeException("Connector failure")
+
+      when(mockConnector.startPayment(any(), any())(using any()))
+        .thenReturn(Future.failed(expectedException))
+
+      whenReady(service.startPayment(testStartPaymentRequest, PaymentOrigin.Vpd).failed) { exception =>
+        exception mustBe expectedException
       }
     }
   }

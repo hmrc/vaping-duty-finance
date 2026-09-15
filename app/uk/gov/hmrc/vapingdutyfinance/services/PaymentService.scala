@@ -29,9 +29,7 @@ class PaymentService @Inject()(
                                 payApiConnector: PayApiConnector
                               )(using ExecutionContext) extends Logging {
 
-  def startPayment(request: StartPaymentRequest)(using HeaderCarrier): Future[StartPaymentResponse] =
-    payApiConnector.startPayment(request, PaymentOrigin.Vpd)
-
-  def startBtaPayment(request: StartPaymentRequest)(using HeaderCarrier): Future[StartPaymentResponse] =
-    payApiConnector.startPayment(request, PaymentOrigin.Bta)
+  def startPayment(request: StartPaymentRequest, origin: PaymentOrigin)
+                  (using HeaderCarrier): Future[StartPaymentResponse] =
+    payApiConnector.startPayment(request, origin)
 }

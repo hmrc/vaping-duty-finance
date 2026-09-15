@@ -22,6 +22,7 @@ import play.api.libs.json.Json
 import play.api.test.Helpers.*
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.vapingdutyfinance.base.SpecBase
+import uk.gov.hmrc.vapingdutyfinance.models.payments.PaymentOrigin
 import uk.gov.hmrc.vapingdutyfinance.services.{FinancialDataService, PaymentService}
 
 import scala.concurrent.Future
@@ -41,7 +42,7 @@ class PaymentControllerSpec extends SpecBase {
   "PaymentController" - {
     "startPayment must" - {
       "return 200 OK with StartPaymentResponse when the service returns success" in {
-        when(mockPaymentService.startPayment(eqTo(testStartPaymentRequest))(using any()))
+        when(mockPaymentService.startPayment(eqTo(testStartPaymentRequest), eqTo(PaymentOrigin.Vpd))(using any()))
           .thenReturn(Future.successful(testStartPaymentResponse))
 
         val request = fakeRequest.withBody(Json.toJson(testStartPaymentRequest))
@@ -59,7 +60,7 @@ class PaymentControllerSpec extends SpecBase {
         SERVICE_UNAVAILABLE
       ).foreach { statusCode =>
         s"return $statusCode with a generic error message when the service fails with $statusCode" in {
-          when(mockPaymentService.startPayment(eqTo(testStartPaymentRequest))(using any()))
+          when(mockPaymentService.startPayment(eqTo(testStartPaymentRequest), eqTo(PaymentOrigin.Vpd))(using any()))
             .thenReturn(Future.failed(UpstreamErrorResponse("some upstream detail that must not leak", statusCode)))
 
           val request = fakeRequest.withBody(Json.toJson(testStartPaymentRequest))
@@ -85,7 +86,7 @@ class PaymentControllerSpec extends SpecBase {
         when(mockFinancialDataService.getPayments(eqTo(testVpdId), eqTo(None), eqTo(None))(using any()))
           .thenReturn(Future.successful(testPaymentsResponse))
 
-        when(mockPaymentService.startBtaPayment(eqTo(testStartPaymentRequest))(using any()))
+        when(mockPaymentService.startPayment(eqTo(testStartPaymentRequest), eqTo(PaymentOrigin.Bta))(using any()))
           .thenReturn(Future.successful(testStartPaymentResponse))
 
         val request = fakeRequest.withBody(Json.toJson(testStartPaymentRequest))
@@ -157,7 +158,7 @@ class PaymentControllerSpec extends SpecBase {
           when(mockFinancialDataService.getPayments(eqTo(testVpdId), eqTo(None), eqTo(None))(using any()))
             .thenReturn(Future.successful(testPaymentsResponse))
 
-          when(mockPaymentService.startBtaPayment(eqTo(testStartPaymentRequest))(using any()))
+          when(mockPaymentService.startPayment(eqTo(testStartPaymentRequest), eqTo(PaymentOrigin.Bta))(using any()))
             .thenReturn(Future.failed(UpstreamErrorResponse("some upstream detail that must not leak", statusCode)))
 
           val request = fakeRequest.withBody(Json.toJson(testStartPaymentRequest))

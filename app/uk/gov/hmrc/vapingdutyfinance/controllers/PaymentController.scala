@@ -22,7 +22,7 @@ import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.vapingdutyfinance.controllers.actions.AuthorisedAction
-import uk.gov.hmrc.vapingdutyfinance.models.payments.StartPaymentRequest
+import uk.gov.hmrc.vapingdutyfinance.models.payments.{PaymentOrigin, StartPaymentRequest}
 import uk.gov.hmrc.vapingdutyfinance.services.{FinancialDataService, PaymentService}
 
 import javax.inject.{Inject, Singleton}
@@ -48,7 +48,7 @@ class PaymentController @Inject()(
         Future.successful(BadRequest(Json.obj("error" -> invalidRequestMessage)))
       },
       paymentRequest =>
-        paymentService.startPayment(paymentRequest)
+        paymentService.startPayment(paymentRequest, PaymentOrigin.Vpd)
           .map(response => Ok(Json.toJson(response)))
           .recover {
             case e: UpstreamErrorResponse =>
@@ -68,7 +68,7 @@ class PaymentController @Inject()(
               Future.successful(BadRequest(Json.obj("error" -> invalidRequestMessage)))
             },
             paymentRequest =>
-              paymentService.startBtaPayment(paymentRequest)
+              paymentService.startPayment(paymentRequest, PaymentOrigin.Bta)
                 .map(response => Ok(Json.toJson(response)))
                 .recover {
                   case e: UpstreamErrorResponse =>
