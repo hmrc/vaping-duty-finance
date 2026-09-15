@@ -42,18 +42,14 @@ class PaymentController @Inject()(
   private val noPaymentDueMessage = "No outstanding balance to pay"
 
 
-  def startPayment(): Action[JsValue] = startPaymentJourney(PaymentOrigin.Vpd)
+  def startPayment(): Action[JsValue] = authorisedAction.async(parse.json) { implicit request =>
+    validateRequest(request.body, PaymentOrigin.Vpd, "")
+  }
 
   def startBtaPayment(): Action[JsValue] = authorisedAction.async(parse.json) { implicit request =>
     checkPositiveBalance(request).flatMap {
       case Some(errorResult) => Future.successful(errorResult)
       case None => validateRequest(request.body, PaymentOrigin.Bta, " for BTA")
-    }
-  }
-
-  private def startPaymentJourney(origin: PaymentOrigin): Action[JsValue] = {
-    authorisedAction.async(parse.json) { implicit request =>
-      validateRequest(request.body, origin, "")
     }
   }
 
