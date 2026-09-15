@@ -43,6 +43,7 @@ class FinancialDataConnector @Inject()(
 
   private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
   private val noDataIdentifiedErrorCode = "018"
+  private val dateTypeBilling = "BILLING"
 
   private def buildRequest(vpdId: String, dateFrom: LocalDate, dateTo: LocalDate): FinancialDataRequest = {
     FinancialDataRequest(
@@ -53,19 +54,19 @@ class FinancialDataConnector @Inject()(
       ),
       selectionCriteria = SelectionCriteria(
         dateRange = DateRange(
-          dateType = appConfig.dateTypePosting,
+          dateType = dateTypeBilling,
           dateFrom = dateFrom,
           dateTo = dateTo
         ),
         includeClearedItems = true,
         includeStatisticalItems = false,
-        includePaymentOnAccount = false
+        includePaymentOnAccount = true
       ),
       dataEnrichment = DataEnrichmentOptions(
         addRegimeTotalisation = true,
         addLockInformation = false,
         addPenaltyDetails = true,
-        addPostedInterestDetails = false,
+        addPostedInterestDetails = true,
         addAccruingInterestDetails = true
       )
     )
