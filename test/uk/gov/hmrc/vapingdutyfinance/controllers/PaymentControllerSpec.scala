@@ -22,24 +22,27 @@ import play.api.libs.json.Json
 import play.api.test.Helpers.*
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.vapingdutyfinance.base.SpecBase
-import uk.gov.hmrc.vapingdutyfinance.services.PaymentService
+import uk.gov.hmrc.vapingdutyfinance.models.payments.PaymentOrigin
+import uk.gov.hmrc.vapingdutyfinance.services.{FinancialDataService, PaymentService}
 
 import scala.concurrent.Future
 
 class PaymentControllerSpec extends SpecBase {
 
   val mockPaymentService: PaymentService = mock[PaymentService]
+  val mockFinancialDataService: FinancialDataService = mock[FinancialDataService]
 
   val controller = new PaymentController(
     cc,
     fakeAuthorisedAction,
+    mockFinancialDataService,
     mockPaymentService
   )
 
   "PaymentController" - {
     "startPayment must" - {
       "return 200 OK with StartPaymentResponse when the service returns success" in {
-        when(mockPaymentService.startPayment(eqTo(testStartPaymentRequest))(using any()))
+        when(mockPaymentService.startPayment(eqTo(testStartPaymentRequest), eqTo(PaymentOrigin.Vpd))(using any()))
           .thenReturn(Future.successful(testStartPaymentResponse))
 
         val request = fakeRequest.withBody(Json.toJson(testStartPaymentRequest))
@@ -57,7 +60,7 @@ class PaymentControllerSpec extends SpecBase {
         SERVICE_UNAVAILABLE
       ).foreach { statusCode =>
         s"return $statusCode with a generic error message when the service fails with $statusCode" in {
-          when(mockPaymentService.startPayment(eqTo(testStartPaymentRequest))(using any()))
+          when(mockPaymentService.startPayment(eqTo(testStartPaymentRequest), eqTo(PaymentOrigin.Vpd))(using any()))
             .thenReturn(Future.failed(UpstreamErrorResponse("some upstream detail that must not leak", statusCode)))
 
           val request = fakeRequest.withBody(Json.toJson(testStartPaymentRequest))
@@ -75,6 +78,95 @@ class PaymentControllerSpec extends SpecBase {
 
         status(result) mustBe BAD_REQUEST
         contentAsJson(result) mustBe Json.obj("error" -> "Invalid request body")
+      }
+    }
+
+    "startBtaPayment must" - {
+      "return 200 OK with StartPaymentResponse when balance is positive and payment succeeds" in {
+        when(mockFinancialDataService.getPayments(eqTo(testVpdId), eqTo(None), eqTo(None))(using any()))
+          .thenReturn(Future.successful(testPaymentsResponse))
+
+        when(mockPaymentService.startPayment(eqTo(testStartPaymentRequest), eqTo(PaymentOrigin.Bta))(using any()))
+          .thenReturn(Future.successful(testStartPaymentResponse))
+
+        val request = fakeRequest.withBody(Json.toJson(testStartPaymentRequest))
+        val result = controller.startBtaPayment()(request)
+
+        status(result) mustBe OK
+        contentAsJson(result) mustBe Json.toJson(testStartPaymentResponse)
+      }
+
+      "return 400 BAD_REQUEST when totalAccountBalance is zero" in {
+        val paymentsWithZeroBalance = testPaymentsResponse.copy(totalAccountBalance = Some(BigDecimal("0.0")))
+
+        when(mockFinancialDataService.getPayments(eqTo(testVpdId), eqTo(None), eqTo(None))(using any()))
+          .thenReturn(Future.successful(paymentsWithZeroBalance))
+
+        val request = fakeRequest.withBody(Json.toJson(testStartPaymentRequest))
+        val result = controller.startBtaPayment()(request)
+
+        status(result) mustBe BAD_REQUEST
+        contentAsJson(result) mustBe Json.obj("error" -> "No outstanding balance to pay")
+      }
+
+      "return 400 BAD_REQUEST when totalAccountBalance is None" in {
+        val paymentsWithNoBalance = testPaymentsResponse.copy(totalAccountBalance = None)
+
+        when(mockFinancialDataService.getPayments(eqTo(testVpdId), eqTo(None), eqTo(None))(using any()))
+          .thenReturn(Future.successful(paymentsWithNoBalance))
+
+        val request = fakeRequest.withBody(Json.toJson(testStartPaymentRequest))
+        val result = controller.startBtaPayment()(request)
+
+        status(result) mustBe BAD_REQUEST
+        contentAsJson(result) mustBe Json.obj("error" -> "No outstanding balance to pay")
+      }
+
+      "return 400 BAD_REQUEST when totalAccountBalance is negative" in {
+        val paymentsWithNegativeBalance = testPaymentsResponse.copy(totalAccountBalance = Some(BigDecimal("-50.0")))
+
+        when(mockFinancialDataService.getPayments(eqTo(testVpdId), eqTo(None), eqTo(None))(using any()))
+          .thenReturn(Future.successful(paymentsWithNegativeBalance))
+
+        val request = fakeRequest.withBody(Json.toJson(testStartPaymentRequest))
+        val result = controller.startBtaPayment()(request)
+
+        status(result) mustBe BAD_REQUEST
+        contentAsJson(result) mustBe Json.obj("error" -> "No outstanding balance to pay")
+      }
+
+      "return 400 BAD_REQUEST when request body is invalid" in {
+        when(mockFinancialDataService.getPayments(eqTo(testVpdId), eqTo(None), eqTo(None))(using any()))
+          .thenReturn(Future.successful(testPaymentsResponse))
+
+        val invalidJson = Json.obj("invalid" -> "data")
+        val request = fakeRequest.withBody(invalidJson)
+        val result = controller.startBtaPayment()(request)
+
+        status(result) mustBe BAD_REQUEST
+        contentAsJson(result) mustBe Json.obj("error" -> "Invalid request body")
+      }
+
+      Seq(
+        BAD_REQUEST,
+        NOT_FOUND,
+        UNPROCESSABLE_ENTITY,
+        INTERNAL_SERVER_ERROR,
+        SERVICE_UNAVAILABLE
+      ).foreach { statusCode =>
+        s"return $statusCode with a generic error message when the payment service fails with $statusCode" in {
+          when(mockFinancialDataService.getPayments(eqTo(testVpdId), eqTo(None), eqTo(None))(using any()))
+            .thenReturn(Future.successful(testPaymentsResponse))
+
+          when(mockPaymentService.startPayment(eqTo(testStartPaymentRequest), eqTo(PaymentOrigin.Bta))(using any()))
+            .thenReturn(Future.failed(UpstreamErrorResponse("some upstream detail that must not leak", statusCode)))
+
+          val request = fakeRequest.withBody(Json.toJson(testStartPaymentRequest))
+          val result = controller.startBtaPayment()(request)
+
+          status(result) mustBe statusCode
+          contentAsJson(result) mustBe Json.obj("error" -> "An error occurred while starting the payment")
+        }
       }
     }
   }

@@ -18,35 +18,18 @@ package uk.gov.hmrc.vapingdutyfinance.services
 
 import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
 import uk.gov.hmrc.vapingdutyfinance.connectors.PayApiConnector
 import uk.gov.hmrc.vapingdutyfinance.models.payments.{PaymentOrigin, StartPaymentRequest, StartPaymentResponse}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
-import scala.math.BigDecimal.RoundingMode
 
 @Singleton
 class PaymentService @Inject()(
-  payApiConnector: PayApiConnector,
-  appConfig: AppConfig
-)(using ExecutionContext) extends Logging {
+                                payApiConnector: PayApiConnector
+                              )(using ExecutionContext) extends Logging {
 
-  def startPayment(request: StartPaymentRequest)(using HeaderCarrier): Future[StartPaymentResponse] =
-    payApiConnector.startPayment(request, PaymentOrigin.Vpd)
-
-  def startBtaPayment(vpdId: String, amount: BigDecimal)(using HeaderCarrier): Future[StartPaymentResponse] =
-    payApiConnector.startPayment(buildStartPaymentRequest(vpdId, amount), PaymentOrigin.Bta)
-
-  private[services] def buildStartPaymentRequest(vpdId: String, amount: BigDecimal): StartPaymentRequest =
-    StartPaymentRequest(
-      vapingDutyReference   = vpdId,
-      amountInPence         = toAmountInPence(amount),
-      chargeReferenceNumber = None,
-      returnUrl             = appConfig.payReturnUrl,
-      backUrl               = appConfig.payBackUrl
-    )
-
-  private[services] def toAmountInPence(amount: BigDecimal): Long =
-    (amount * 100).setScale(0, RoundingMode.HALF_UP).toLong
+  def startPayment(request: StartPaymentRequest, origin: PaymentOrigin)
+                  (using HeaderCarrier): Future[StartPaymentResponse] =
+    payApiConnector.startPayment(request, origin)
 }

@@ -18,40 +18,77 @@ package uk.gov.hmrc.vapingdutyfinance.controllers
 
 import play.api.Logging
 import play.api.libs.json.{JsValue, Json}
-import play.api.mvc.{Action, ControllerComponents}
+import play.api.mvc.{Action, ControllerComponents, Result}
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.vapingdutyfinance.controllers.actions.AuthorisedAction
-import uk.gov.hmrc.vapingdutyfinance.models.payments.StartPaymentRequest
-import uk.gov.hmrc.vapingdutyfinance.services.PaymentService
+import uk.gov.hmrc.vapingdutyfinance.models.payments.{PaymentOrigin, StartPaymentRequest}
+import uk.gov.hmrc.vapingdutyfinance.models.requests.IdentifierRequest
+import uk.gov.hmrc.vapingdutyfinance.services.{FinancialDataService, PaymentService}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class PaymentController @Inject()(
-  cc: ControllerComponents,
-  authorisedAction: AuthorisedAction,
-  paymentService: PaymentService
-)(using ExecutionContext) extends BackendController(cc) with Logging {
+                                   cc: ControllerComponents,
+                                   authorisedAction: AuthorisedAction,
+                                   financialDataService: FinancialDataService,
+                                   paymentService: PaymentService
+                                 )(using ExecutionContext) extends BackendController(cc) with Logging {
 
   private val invalidRequestMessage = "Invalid request body"
-  private val paymentErrorMessage   = "An error occurred while starting the payment"
+  private val paymentErrorMessage = "An error occurred while starting the payment"
+  private val noPaymentDueMessage = "No outstanding balance to pay"
+
 
   def startPayment(): Action[JsValue] = authorisedAction.async(parse.json) { implicit request =>
-    request.body.validate[StartPaymentRequest].fold(
+    validateRequest(request.body, PaymentOrigin.Vpd, "")
+  }
+
+  def startBtaPayment(): Action[JsValue] = authorisedAction.async(parse.json) { implicit request =>
+    checkPositiveBalance(request).flatMap {
+      case Some(errorResult) => Future.successful(errorResult)
+      case None => validateRequest(request.body, PaymentOrigin.Bta, " for BTA")
+    }
+  }
+
+  private def checkPositiveBalance(implicit request: IdentifierRequest[JsValue]): Future[Option[Result]] = {
+    financialDataService.getPayments(request.vpdId, dateFrom = None, dateTo = None).map { payments =>
+      payments.totalAccountBalance.filter(_ > 0) match {
+        case Some(_) => None
+        case None =>
+          logger.warn(s"No positive totalAccountBalance found for vpdId=${request.vpdId}")
+          Some(BadRequest(Json.obj("error" -> noPaymentDueMessage)))
+      }
+    }
+  }
+
+  private def validateRequest(
+                               body: JsValue,
+                               origin: PaymentOrigin,
+                               logSuffix: String
+                             )(implicit request: IdentifierRequest[?]): Future[Result] = {
+    body.validate[StartPaymentRequest].fold(
       errors => {
-        logger.warn(s"Invalid StartPaymentRequest: $errors")
+        logger.warn(s"Invalid StartPaymentRequest$logSuffix: $errors")
         Future.successful(BadRequest(Json.obj("error" -> invalidRequestMessage)))
       },
-      paymentRequest =>
-        paymentService.startPayment(paymentRequest)
-          .map(response => Ok(Json.toJson(response)))
-          .recover {
-            case e: UpstreamErrorResponse =>
-              logger.error(s"Error from pay-api: ${e.getMessage}", e)
-              Status(e.statusCode)(Json.obj("error" -> paymentErrorMessage))
-          }
+      paymentRequest => startPaymentJourney(paymentRequest, origin)
     )
+  }
+
+  private def startPaymentJourney(
+                                   paymentRequest: StartPaymentRequest,
+                                   origin: PaymentOrigin
+                                 )(using request: IdentifierRequest[?]): Future[Result] = {
+
+    paymentService.startPayment(paymentRequest, origin)
+      .map(response => Ok(Json.toJson(response)))
+      .recover {
+        case e: UpstreamErrorResponse =>
+          logger.error(s"Failed to start payment for vpdId=${request.vpdId}, origin=$origin: ${e.getMessage}", e)
+          Status(e.statusCode)(Json.obj("error" -> paymentErrorMessage))
+      }
   }
 }
