@@ -23,7 +23,7 @@ import play.api.http.Status.INTERNAL_SERVER_ERROR
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.vapingdutyfinance.base.SpecBase
 import uk.gov.hmrc.vapingdutyfinance.connectors.FinancialDataConnector
-import uk.gov.hmrc.vapingdutyfinance.models.PaymentStatus
+import uk.gov.hmrc.vapingdutyfinance.models.{MainTransactionType, PaymentStatus}
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
 
 import java.time.{Instant, LocalDate}
@@ -45,7 +45,7 @@ class FinancialDataServiceSpec extends SpecBase {
           result.outstanding must not be empty
           result.outstanding.head.chargeReference mustBe Some("XP001286394838")
           result.outstanding.head.amountDue mustBe BigDecimal("100.0")
-          result.outstanding.head.mainTransaction mustBe Some("4060")
+          result.outstanding.head.mainTransaction mustBe MainTransactionType.Return
           result.paymentOnAccount mustBe empty
           result.cleared mustBe empty
           result.totalAccountBalance mustBe Some(BigDecimal("300.0"))
@@ -440,7 +440,7 @@ class FinancialDataServiceSpec extends SpecBase {
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
           result.outstanding must not be empty
-          result.outstanding.head.mainTransaction mustBe Some("4061")
+          result.outstanding.head.mainTransaction mustBe MainTransactionType.LatePaymentInterest
           result.outstanding.head.status mustBe PaymentStatus.Overdue
           result.paymentOnAccount mustBe empty
         }
@@ -539,8 +539,36 @@ class FinancialDataServiceSpec extends SpecBase {
 
         whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
           result.outstanding must not be empty
+          result.outstanding.head.mainTransaction mustBe MainTransactionType.Return
           result.cleared mustBe empty
           result.paymentOnAccount mustBe empty
+        }
+      }
+
+      "drop and log an outstanding payment with an unrecognised main transaction code without failing the request" in {
+        val docWithUnknownCharge = testDocWithOutstanding.copy(
+          lineItemDetails = Some(Seq(
+            testDocWithOutstanding.lineItemDetails.get.head.copy(
+              mainTransaction = Some("9999")
+            )
+          ))
+        )
+
+        val response = testResponse.copy(
+          success = testResponse.success.copy(
+            financialData = testResponse.success.financialData.map(fd =>
+              fd.copy(documentDetails = Some(Seq(docWithUnknownCharge)))
+            )
+          )
+        )
+
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(response))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding mustBe empty
+          result.paymentOnAccount mustBe empty
+          result.cleared mustBe empty
         }
       }
     }

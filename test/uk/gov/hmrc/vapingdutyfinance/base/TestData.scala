@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.vapingdutyfinance.base
 
-import uk.gov.hmrc.vapingdutyfinance.models.{ClearedPayment, OutstandingPayment, PaymentOnAccount, PaymentStatus, PaymentsResponse}
+import uk.gov.hmrc.vapingdutyfinance.models.{ClearedPayment, MainTransactionType, OutstandingPayment, PaymentOnAccount, PaymentStatus, PaymentsResponse}
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.{DocumentDetails, FinancialData, FinancialDataResponse, FinancialDataSuccess, LineItemDetails, RegimeTotalisation, Totalisation}
 import uk.gov.hmrc.vapingdutyfinance.models.payments.{StartPaymentRequest, StartPaymentResponse}
 
@@ -118,7 +118,7 @@ trait TestData {
     amountDue = BigDecimal("100.0"),
     dueDate = Some(LocalDate.of(2026, 10, 1)),
     status = PaymentStatus.Due,
-    mainTransaction = Some("4060")
+    mainTransaction = MainTransactionType.Return
   )
   
   val testPaymentOnAccount: PaymentOnAccount = PaymentOnAccount(
