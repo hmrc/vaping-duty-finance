@@ -76,9 +76,6 @@ class FinancialDataService @Inject()(
   private def lineItems(doc: DocumentDetails): Seq[LineItemDetails] =
     doc.lineItemDetails.getOrElse(Seq.empty)
 
-  private val displayableMainTransactionTypes: Set[MainTransactionType] =
-    Set(MainTransactionType.Return, MainTransactionType.LatePaymentInterest)
-
   private def isPaymentOnAccount(lineItem: LineItemDetails): Boolean =
     lineItem.mainTransaction.contains(MainTransactionType.PaymentOnAccount.code)
 
@@ -92,7 +89,6 @@ class FinancialDataService @Inject()(
     lineItems(doc).headOption.flatMap { firstLineItem =>
       firstLineItem.mainTransaction
         .flatMap(MainTransactionType.fromCode)
-        .filter(displayableMainTransactionTypes.contains)
         .map { mainTransactionType =>
           OutstandingPayment(
             chargeReference = doc.chargeReferenceNumber,
