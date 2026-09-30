@@ -86,14 +86,27 @@ class FinancialDataService @Inject()(
     lineItems(doc).exists(isPaymentOnAccount) && isVpdRegime(doc)
 
   private def toOutstandingPayments(doc: DocumentDetails): Seq[OutstandingPayment] =
-    lineItems(doc).headOption.map { firstLineItem =>
-      OutstandingPayment(
-        chargeReference = doc.chargeReferenceNumber,
-        amountDue       = doc.documentOutstandingAmount.getOrElse(BigDecimal(0)),
-        dueDate         = firstLineItem.netDueDate,
-        status          = determineStatus(firstLineItem.netDueDate),
-        mainTransaction = firstLineItem.mainTransaction
-      )
+    lineItems(doc).headOption.flatMap { firstLineItem =>
+      firstLineItem.mainTransaction
+        .flatMap(MainTransactionType.fromCode)
+        .map { mainTransactionType =>
+          OutstandingPayment(
+            chargeReference = doc.chargeReferenceNumber,
+            amountDue       = doc.documentOutstandingAmount.getOrElse(BigDecimal(0)),
+            dueDate         = firstLineItem.netDueDate,
+            status          = determineStatus(firstLineItem.netDueDate),
+            mainTransaction = mainTransactionType
+          )
+        }
+        .orElse {
+          firstLineItem.mainTransaction.foreach { code =>
+            logger.error(
+              s"Unknown or non-displayable main transaction code '$code' for charge reference " +
+                s"${doc.chargeReferenceNumber.getOrElse("unknown")} - dropping outstanding payment"
+            )
+          }
+          None
+        }
     }.toSeq
 
   private def toClearedPayments(doc: DocumentDetails): Seq[ClearedPayment] =

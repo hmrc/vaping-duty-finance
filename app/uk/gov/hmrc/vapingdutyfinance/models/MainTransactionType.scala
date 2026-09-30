@@ -16,21 +16,27 @@
 
 package uk.gov.hmrc.vapingdutyfinance.models
 
-sealed trait MainTransactionType {
-  def code: String
-  def description: String
-}
+import play.api.libs.json.{Format, JsError, JsResult, JsString, JsSuccess, JsValue}
+
+enum MainTransactionType(val code: String, val description: String):
+  case PaymentOnAccount extends MainTransactionType("0060", "Payment on Account")
+  case Return extends MainTransactionType("4060", "Return")
+  case LatePaymentInterest extends MainTransactionType("4061", "Late Payment Interest")
 
 object MainTransactionType {
-  case object PaymentOnAccount extends MainTransactionType {
-    val code = "0060"
-    val description = "Payment on Account"
+  def fromCode(code: String): Option[MainTransactionType] = values.find(_.code == code)
+
+  val all: Seq[MainTransactionType] = values.toSeq
+
+  given format: Format[MainTransactionType] = new Format[MainTransactionType] {
+    override def reads(json: JsValue): JsResult[MainTransactionType] =
+      json.validate[String].flatMap {
+        case "PaymentOnAccount"    => JsSuccess(MainTransactionType.PaymentOnAccount)
+        case "Return"              => JsSuccess(MainTransactionType.Return)
+        case "LatePaymentInterest" => JsSuccess(MainTransactionType.LatePaymentInterest)
+        case other                 => JsError(s"Unknown MainTransactionType: $other")
+      }
+
+    override def writes(value: MainTransactionType): JsValue = JsString(value.toString)
   }
-  
-  def fromCode(code: String): Option[MainTransactionType] = code match {
-    case "0060" => Some(PaymentOnAccount)
-    case _ => None
-  }
-  
-  val all: Seq[MainTransactionType] = Seq(PaymentOnAccount)
 }
