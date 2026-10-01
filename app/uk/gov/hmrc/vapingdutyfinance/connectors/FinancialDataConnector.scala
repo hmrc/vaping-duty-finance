@@ -76,13 +76,12 @@ class FinancialDataConnector @Inject()(
                       (using hc: HeaderCarrier): Future[FinancialDataResponse] = {
 
     val request = buildRequest(vpdId, dateFrom, dateTo)
-    val correlationId = hc.requestId.map(_.value).getOrElse(uuidGenerator.uuid)
     val receiptDate = Instant.now(clock).atOffset(ZoneOffset.UTC).format(dateTimeFormatter)
 
     httpClient
       .post(url"${appConfig.financialDataUrl}")
       .setHeader(HeaderNames.authorisation -> HIPAuth(appConfig).authorizationForFinancialData())
-      .setHeader("correlationid" -> correlationId)
+      .setHeader("correlationid" -> uuidGenerator.uuid)
       .setHeader("X-Originating-System" -> appConfig.originatingSystemVpd)
       .setHeader("X-Receipt-Date" -> receiptDate)
       .setHeader("X-Transmitting-System" -> appConfig.transmittingSystem)
@@ -120,6 +119,9 @@ class FinancialDataConnector @Inject()(
                 logger.warn("Failed to parse 422 error response from financial data API")
                 Future.failed(UpstreamErrorResponse("Unexpected response from financial data API", UNPROCESSABLE_ENTITY))
             }
+          case BAD_REQUEST | INTERNAL_SERVER_ERROR | SERVICE_UNAVAILABLE =>
+            logger.warn(s"Unexpected response from financial data API: status=${response.status} body: ${response.body}")
+            Future.failed(UpstreamErrorResponse("Unexpected response from financial data API", response.status))
           case status =>
             logger.warn(s"Unexpected response from financial data API: status=$status")
             Future.failed(UpstreamErrorResponse("Unexpected response from financial data API", status))

@@ -191,6 +191,16 @@ class FinancialDataConnectorISpec extends SpecBase with ConnectorTestHelpers {
         }
       }
 
+      "fail with UpstreamErrorResponse on 503 Service Unavailable" in new SetUp {
+        stubPost(path, SERVICE_UNAVAILABLE, "")
+
+        whenReady(connector.getFinancialData(testVpdId, LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31)).failed) { exception =>
+          exception mustBe an[UpstreamErrorResponse]
+          exception.asInstanceOf[UpstreamErrorResponse].statusCode mustBe SERVICE_UNAVAILABLE
+          verifyPost(path)
+        }
+      }
+
       "fail on network fault" in new SetUp {
         stubPostFault(path)
 
