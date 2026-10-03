@@ -63,11 +63,6 @@ class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig)
   val idTypeVpd = "ZVPD"
   val originatingSystemVpd = "MDTP-VPD"
   val transmittingSystem = "HIP"
-  
-  // Date Range Configuration
-  // VPD service go-live date - there is no financial data before this, so it's used as the
-  // default start of the query date range rather than a rolling look-back window.
-  val financialDataStartDate: LocalDate = LocalDate.parse(config.get[String]("financialData.startDate"))
 
   val financialDataClientId: String = config.get[String]("microservice.services.financial-data.clientId")
   val financialDataSecret: String = config.get[String]("microservice.services.financial-data.secret")
