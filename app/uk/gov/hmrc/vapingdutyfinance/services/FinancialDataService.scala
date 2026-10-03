@@ -18,19 +18,20 @@ package uk.gov.hmrc.vapingdutyfinance.services
 
 import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.vapingdutyfinance.config.AppConfig
 import uk.gov.hmrc.vapingdutyfinance.connectors.FinancialDataConnector
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
-import uk.gov.hmrc.vapingdutyfinance.models.{ClearedPayment, MainTransactionType, OutstandingPayment, PaymentOnAccount, PaymentStatus, PaymentsResponse}
+import uk.gov.hmrc.vapingdutyfinance.models.*
 
-import java.time.{Clock, LocalDate}
+import java.time.Month.*
+import java.time.temporal.TemporalAdjusters
+import java.time.temporal.TemporalAdjusters.{firstDayOfYear, lastDayOfYear}
+import java.time.{Clock, LocalDate, Month}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class FinancialDataService @Inject()(
                                       connector: FinancialDataConnector,
-                                      appConfig: AppConfig,
                                       clock: Clock
                                     )(using ExecutionContext) extends Logging {
 
@@ -39,8 +40,9 @@ class FinancialDataService @Inject()(
                    dateFrom: Option[LocalDate],
                    dateTo: Option[LocalDate]
                  )(using HeaderCarrier): Future[PaymentsResponse] = {
-    val effectiveDateFrom = dateFrom.getOrElse(appConfig.financialDataStartDate)
-    val effectiveDateTo = dateTo.getOrElse(LocalDate.now(clock))
+    // Simple values for initial launch. Will be updated with pagination for 2027
+    val effectiveDateFrom = dateFrom.getOrElse(LocalDate.now(clock).`with`(firstDayOfYear()))
+    val effectiveDateTo   = dateTo  .getOrElse(LocalDate.now(clock).`with`(lastDayOfYear()))
 
     connector.getFinancialData(vpdId, effectiveDateFrom, effectiveDateTo)
       .map(response => transformToPayments(response))
