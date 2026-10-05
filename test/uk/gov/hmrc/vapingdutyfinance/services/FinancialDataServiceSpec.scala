@@ -26,6 +26,7 @@ import uk.gov.hmrc.vapingdutyfinance.connectors.FinancialDataConnector
 import uk.gov.hmrc.vapingdutyfinance.models.{MainTransactionType, PaymentStatus}
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
 
+import java.time.temporal.TemporalAdjusters.{firstDayOfYear, lastDayOfYear}
 import java.time.{Instant, LocalDate}
 import scala.concurrent.Future
 
@@ -33,7 +34,7 @@ class FinancialDataServiceSpec extends SpecBase {
 
   val mockConnector: FinancialDataConnector = mock[FinancialDataConnector]
 
-  val service = FinancialDataService(mockConnector, appConfig, clock)
+  val service = FinancialDataService(mockConnector, clock)
 
   "FinancialDataService" - {
     "getPayments must" - {
@@ -248,7 +249,7 @@ class FinancialDataServiceSpec extends SpecBase {
         }
       }
 
-      "default dateFrom to the fixed VPD service start date and dateTo to today when dates not provided" in {
+      "default dateFrom to the first day of the year and dateTo to the last day of the year when dates not provided" in {
         when(mockConnector.getFinancialData(any(), any(), any())(using any()))
           .thenReturn(Future.successful(testResponse))
 
@@ -257,9 +258,9 @@ class FinancialDataServiceSpec extends SpecBase {
           val dateFromCaptor = ArgumentCaptor.forClass(classOf[LocalDate])
           val dateToCaptor = ArgumentCaptor.forClass(classOf[LocalDate])
           verify(mockConnector, atLeastOnce()).getFinancialData(vpdIdCaptor.capture(), dateFromCaptor.capture(), dateToCaptor.capture())(using any())
-
-          dateFromCaptor.getValue mustBe appConfig.financialDataStartDate
-          dateToCaptor.getValue mustBe LocalDate.now(clock)
+          
+          dateFromCaptor.getValue mustBe LocalDate.now(clock).`with`(firstDayOfYear())
+          dateToCaptor.getValue mustBe LocalDate.now(clock).`with`(lastDayOfYear())
         }
       }
 
