@@ -19,13 +19,12 @@ package uk.gov.hmrc.vapingdutyfinance.services
 import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.vapingdutyfinance.connectors.FinancialDataConnector
-import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
 import uk.gov.hmrc.vapingdutyfinance.models.*
+import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
 
-import java.time.Month.*
 import java.time.temporal.TemporalAdjusters
 import java.time.temporal.TemporalAdjusters.{firstDayOfYear, lastDayOfYear}
-import java.time.{Clock, LocalDate, Month}
+import java.time.{Clock, LocalDate}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 

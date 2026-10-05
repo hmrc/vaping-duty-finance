@@ -26,7 +26,6 @@ import uk.gov.hmrc.vapingdutyfinance.connectors.FinancialDataConnector
 import uk.gov.hmrc.vapingdutyfinance.models.{MainTransactionType, PaymentStatus}
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
 
-import java.time.Month.{DECEMBER, JANUARY}
 import java.time.temporal.TemporalAdjusters.{firstDayOfYear, lastDayOfYear}
 import java.time.{Instant, LocalDate}
 import scala.concurrent.Future
