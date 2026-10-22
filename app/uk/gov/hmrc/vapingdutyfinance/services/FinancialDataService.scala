@@ -57,7 +57,7 @@ class FinancialDataService @Inject()(
     val (paymentOnAccountDocs, outstandingAndCleared) = documents.partition(isPaymentOnAccountDocument)
 
     val outstanding = outstandingAndCleared
-      .filter(_.documentOutstandingAmount.exists(_ > 0))
+      .filter(_.documentOutstandingAmount.exists(_ != 0))
       .flatMap(toOutstandingPayments)
 
     val cleared = outstandingAndCleared

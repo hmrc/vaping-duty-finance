@@ -52,6 +52,31 @@ class FinancialDataServiceSpec extends SpecBase {
           result.totalAccountBalance mustBe Some(BigDecimal("300.0"))
         }
       }
+      "return outstanding payments when connector returns success with negative amount" in {
+        val testResponse: FinancialDataResponse = FinancialDataResponse(
+          success = FinancialDataSuccess(
+            processingDate = Instant.parse("2026-10-01T10:15:10Z"),
+            financialData = Some(FinancialData(
+              totalisation = Some(sampleNegativeTotalisation),
+              documentDetails = Some(Seq(testDocWithOutstanding.copy(
+                documentOutstandingAmount = Some(BigDecimal("-100.0")), 
+                documentTotalAmount = Some(BigDecimal("-100.0")))))
+            ))
+          )
+        )
+        when(mockConnector.getFinancialData(any(), any(), any())(using any()))
+          .thenReturn(Future.successful(testResponse))
+
+        whenReady(service.getPayments(testVpdId, Some(LocalDate.of(2024, 1, 1)), Some(LocalDate.of(2024, 12, 31)))) { result =>
+          result.outstanding must not be empty
+          result.outstanding.head.chargeReference mustBe Some("XP001286394838")
+          result.outstanding.head.amountDue mustBe BigDecimal("-100.0")
+          result.outstanding.head.mainTransaction mustBe MainTransactionType.Return
+          result.paymentOnAccount mustBe empty
+          result.cleared mustBe empty
+          result.totalAccountBalance mustBe Some(BigDecimal("-100.0"))
+        }
+      }
 
       "pass through totalisation when present in response" in {
         when(mockConnector.getFinancialData(any(), any(), any())(using any()))

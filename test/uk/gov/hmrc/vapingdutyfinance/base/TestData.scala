@@ -36,8 +36,19 @@ trait TestData {
     totalAccountBalance = Some(BigDecimal("300.0"))
   )
 
+  val sampleRegimeNegativeTotalisation: RegimeTotalisation = RegimeTotalisation(
+    totalAccountOverdue = Some(BigDecimal("-100.0")),
+    totalAccountNotYetDue = Some(BigDecimal("0.0")),
+    totalAccountCredit = Some(BigDecimal("0.0")),
+    totalAccountBalance = Some(BigDecimal("-100.0"))
+  )
+
   val sampleTotalisation: Totalisation = Totalisation(
     regimeTotalisation = Some(sampleRegimeTotalisation)
+  )
+
+  val sampleNegativeTotalisation: Totalisation = Totalisation(
+    regimeTotalisation = Some(sampleRegimeNegativeTotalisation)
   )
 
   // Payment fixtures shared between FinancialDataServiceSpec and FinancialDataControllerSpec.
