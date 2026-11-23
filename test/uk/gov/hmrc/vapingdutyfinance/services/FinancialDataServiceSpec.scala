@@ -23,10 +23,9 @@ import play.api.http.Status.INTERNAL_SERVER_ERROR
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.vapingdutyfinance.base.SpecBase
 import uk.gov.hmrc.vapingdutyfinance.connectors.FinancialDataConnector
-import uk.gov.hmrc.vapingdutyfinance.models.{MainTransactionType, PaymentStatus}
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
+import uk.gov.hmrc.vapingdutyfinance.models.{MainTransactionType, PaymentStatus}
 
-import java.time.temporal.TemporalAdjusters.{firstDayOfYear, lastDayOfYear}
 import java.time.{Instant, LocalDate}
 import scala.concurrent.Future
 
@@ -284,8 +283,8 @@ class FinancialDataServiceSpec extends SpecBase {
           val dateToCaptor = ArgumentCaptor.forClass(classOf[LocalDate])
           verify(mockConnector, atLeastOnce()).getFinancialData(vpdIdCaptor.capture(), dateFromCaptor.capture(), dateToCaptor.capture())(using any())
           
-          dateFromCaptor.getValue mustBe LocalDate.now(clock).`with`(firstDayOfYear())
-          dateToCaptor.getValue mustBe LocalDate.now(clock).`with`(lastDayOfYear())
+          dateFromCaptor.getValue mustBe LocalDate.now(clock).minusYears(1)
+          dateToCaptor.getValue mustBe LocalDate.now(clock)
         }
       }
 
