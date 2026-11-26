@@ -22,8 +22,6 @@ import uk.gov.hmrc.vapingdutyfinance.connectors.FinancialDataConnector
 import uk.gov.hmrc.vapingdutyfinance.models.*
 import uk.gov.hmrc.vapingdutyfinance.models.financialdata.*
 
-import java.time.temporal.TemporalAdjusters
-import java.time.temporal.TemporalAdjusters.{firstDayOfYear, lastDayOfYear}
 import java.time.{Clock, LocalDate}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -40,8 +38,8 @@ class FinancialDataService @Inject()(
                    dateTo: Option[LocalDate]
                  )(using HeaderCarrier): Future[PaymentsResponse] = {
     // Simple values for initial launch. Will be updated with pagination for 2027
-    val effectiveDateFrom = dateFrom.getOrElse(LocalDate.now(clock).`with`(firstDayOfYear()))
-    val effectiveDateTo   = dateTo  .getOrElse(LocalDate.now(clock).`with`(lastDayOfYear()))
+    val effectiveDateFrom = dateFrom.getOrElse(LocalDate.now(clock).minusYears(1)) // 12 months back
+    val effectiveDateTo   = dateTo  .getOrElse(LocalDate.now(clock)) //NOW
 
     connector.getFinancialData(vpdId, effectiveDateFrom, effectiveDateTo)
       .map(response => transformToPayments(response))
